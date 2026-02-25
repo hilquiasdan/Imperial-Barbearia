@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cinzel", serif;
+  --font-sans: "Montserrat", sans-serif;
+  
+  --color-gold-300: #F9E59E;
+  --color-gold-400: #E6C200;
+  --color-gold-500: #C5A059; /* More metallic/bronze gold from image */
+  --color-gold-600: #997B36;
+  
+  --color-navy-800: #162a47;
+  --color-navy-900: #0B1D35; /* Matching the deep blue background */
+  
+  --animate-spin-slow: spin 8s linear infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+  
+  --background-image-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+}
+
+@layer base {
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Montserrat:wght@300;400;500;600&display=swap');
+
+  body {
+    @apply bg-navy-900 text-gray-200 font-sans overflow-x-hidden;
+    /* Removed global grain for performance, will use it selectively */
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif text-gold-500;
+  }
+}
+
+@layer utilities {
+  .text-gold-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300;
+  }
+  
+  .bg-gold-gradient {
+    @apply bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300;
+  }
+
+  .glass-panel {
+    @apply bg-navy-900/80 backdrop-blur-md md:backdrop-blur-xl border border-white/10 shadow-xl relative overflow-hidden;
+    transform: translateZ(0); /* Hardware acceleration */
+  }
+
+  .glass-panel::before {
+    content: "";
+    @apply absolute inset-0 pointer-events-none opacity-20;
+    background-image: var(--background-image-texture);
+  }
+  
+  .shimmer-btn {
+    @apply relative overflow-hidden;
+    background-size: 200% 100%;
+  }
+
+  .shimmer-btn::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000;
+  }
+
+  .shimmer-btn:hover::after {
+    @apply translate-x-full;
+  }
+  
+  .neon-glow {
+    box-shadow: 0 0 20px rgba(197, 160, 89, 0.4), 0 0 40px rgba(197, 160, 89, 0.1);
+  }
+  
+  .text-shadow-sm {
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+}
