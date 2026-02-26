@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Twitter } from 'lucide-react';
+import { Facebook, Instagram } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -67,14 +67,11 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-bold mb-6 uppercase tracking-wider text-sm border-b border-gold-500/30 pb-2 inline-block">Siga-nos</h3>
             <div className="flex space-x-4 mb-8">
-              <a href="#" className="w-10 h-10 rounded-full bg-navy-800 border border-white/5 flex items-center justify-center text-gray-400 hover:bg-gold-500 hover:text-navy-900 hover:border-gold-500 transition-all duration-300 transform hover:-translate-y-1">
-                <Instagram size={20} />
+              <a href="https://www.instagram.com/imperialbarbearia01_/" target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-navy-800 border border-white/5 flex items-center justify-center text-gray-400 hover:bg-gold-500 hover:text-navy-900 hover:border-gold-500 transition-all duration-300 transform hover:-translate-y-1">
+                <Instagram size={24} />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-navy-800 border border-white/5 flex items-center justify-center text-gray-400 hover:bg-gold-500 hover:text-navy-900 hover:border-gold-500 transition-all duration-300 transform hover:-translate-y-1">
-                <Facebook size={20} />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-navy-800 border border-white/5 flex items-center justify-center text-gray-400 hover:bg-gold-500 hover:text-navy-900 hover:border-gold-500 transition-all duration-300 transform hover:-translate-y-1">
-                <Twitter size={20} />
+              <a href="https://www.facebook.com/profile.php?id=61563903786667&locale=pt_BR" target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-navy-800 border border-white/5 flex items-center justify-center text-gray-400 hover:bg-gold-500 hover:text-navy-900 hover:border-gold-500 transition-all duration-300 transform hover:-translate-y-1">
+                <Facebook size={24} />
               </a>
             </div>
             <p className="text-xs text-gray-500">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { format, addDays, startOfToday, setHours, setMinutes, isBefore, isEqual } from 'date-fns';
@@ -19,9 +19,10 @@ import {
   Droplets,
   Sun,
   Wind,
-  HeartHandshake
+  HeartHandshake,
+  Trash2
 } from 'lucide-react';
-import { useData } from '../context/DataContext';
+import { useData, Appointment } from '../context/DataContext';
 import { formatCurrency, cn } from '../utils';
 
 export default function Booking() {
@@ -30,6 +31,7 @@ export default function Booking() {
   const { services, addAppointment, appointments, barbers } = useData();
   
   const [step, setStep] = useState(1);
+  const [activeTab, setActiveTab] = useState<'new' | 'portal'>('new');
   const [selectedBarber, setSelectedBarber] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string | null>(searchParams.get('service'));
   const [selectedDate, setSelectedDate] = useState<Date>(startOfToday());
@@ -40,12 +42,32 @@ export default function Booking() {
   // Generate next 14 days
   const days = Array.from({ length: 14 }, (_, i) => addDays(startOfToday(), i));
 
-  // Generate time slots (09:00 to 19:00)
-  const timeSlots = [];
-  for (let i = 9; i < 19; i++) {
-    timeSlots.push(`${i.toString().padStart(2, '0')}:00`);
-    timeSlots.push(`${i.toString().padStart(2, '0')}:30`);
-  }
+  // Memoize occupied slots for the selected date and barber
+  const occupiedSlots = useMemo(() => {
+    if (!selectedBarber) return new Set<string>();
+    
+    return new Set(
+      appointments
+        .filter(appt => {
+          if (appt.status === 'cancelled') return false;
+          if (appt.barberId !== selectedBarber) return false;
+          const apptDate = new Date(appt.date);
+          return isEqual(startOfToday(), startOfToday()) && // This is just to trigger re-render if needed
+                 format(apptDate, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
+        })
+        .map(appt => format(new Date(appt.date), 'HH:mm'))
+    );
+  }, [appointments, selectedBarber, selectedDate]);
+
+  // Generate time slots (09:00 to 19:00) - Memoized
+  const timeSlots = useMemo(() => {
+    const slots = [];
+    for (let i = 9; i < 19; i++) {
+      slots.push(`${i.toString().padStart(2, '0')}:00`);
+      slots.push(`${i.toString().padStart(2, '0')}:30`);
+    }
+    return slots;
+  }, []);
 
   const handleNext = () => {
     if (step < 4) setStep(step + 1);
@@ -86,20 +108,11 @@ export default function Booking() {
   };
 
   const isSlotOccupied = (time: string) => {
-    if (!selectedBarber) return false;
-    
-    const [h, m] = time.split(':').map(Number);
-    const checkDate = setHours(setMinutes(selectedDate, m), h);
-
-    return appointments.some(appt => {
-      if (appt.status === 'cancelled') return false;
-      if (appt.barberId !== selectedBarber) return false;
-      const apptDate = new Date(appt.date);
-      return isEqual(apptDate, checkDate);
-    });
+    return occupiedSlots.has(time);
   };
 
   const getStepTitle = () => {
+    if (activeTab === 'portal') return "Meus Agendamentos";
     switch(step) {
       case 1: return "Escolha o Barbeiro";
       case 2: return "Escolha o Serviço";
@@ -150,64 +163,95 @@ export default function Booking() {
             <div className="w-20"></div> {/* Spacer */}
           </div>
 
-          <h1 className="text-2xl md:text-4xl font-serif text-white mb-2">Agende seu Horário</h1>
-          <p className="text-gray-400 mb-6 md:mb-8 text-sm md:text-base">Experiência premium em poucos cliques</p>
+          <h1 className="text-2xl md:text-4xl font-serif text-white mb-6">
+            {activeTab === 'new' ? 'Agende seu Horário' : 'Portal do Cliente'}
+          </h1>
 
-          {/* New Progress Steps - Desktop Only */}
-          <div className="hidden md:flex justify-between items-center max-w-2xl mx-auto relative">
-            {/* Connecting Line */}
-            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-navy-800 -z-10 transform -translate-y-1/2"></div>
-            <div 
-              className="absolute top-1/2 left-0 h-0.5 bg-gold-500 -z-10 transform -translate-y-1/2 transition-all duration-500"
-              style={{ width: `${((step - 1) / 3) * 100}%` }}
-            ></div>
+          {/* Tab Switcher */}
+          <div className="flex justify-center mb-10">
+            <div className="bg-navy-800/50 p-1 rounded-xl border border-white/5 flex gap-1">
+              <button
+                onClick={() => setActiveTab('new')}
+                className={cn(
+                  "px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all",
+                  activeTab === 'new' ? "bg-gold-500 text-navy-900 shadow-lg" : "text-gray-400 hover:text-white"
+                )}
+              >
+                Novo Agendamento
+              </button>
+              <button
+                onClick={() => setActiveTab('portal')}
+                className={cn(
+                  "px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all",
+                  activeTab === 'portal' ? "bg-gold-500 text-navy-900 shadow-lg" : "text-gray-400 hover:text-white"
+                )}
+              >
+                Meus Agendamentos
+              </button>
+            </div>
+          </div>
 
-            {[1, 2, 3, 4].map((s) => (
-              <div key={s} className="flex flex-col items-center gap-2">
-                <motion.div 
-                  initial={false}
-                  animate={{ 
-                    scale: step === s ? 1.1 : 1,
-                    backgroundColor: step >= s ? '#D4AF37' : '#1a202c',
-                    borderColor: step >= s ? '#D4AF37' : '#2d3748'
-                  }}
-                  className={cn(
-                    "w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 z-10",
-                    step >= s ? "text-navy-900 shadow-[0_0_10px_rgba(212,175,55,0.3)]" : "text-gray-500 border-navy-700 bg-navy-900"
-                  )}
-                >
-                  {s === 1 && <User size={14} />}
-                  {s === 2 && <Scissors size={14} />}
-                  {s === 3 && <CalendarIcon size={14} />}
-                  {s === 4 && <CheckCircle size={14} />}
-                </motion.div>
-                <span className={cn(
-                  "text-xs font-medium uppercase tracking-wider hidden md:block transition-colors duration-300",
-                  step >= s ? "text-gold-500" : "text-gray-600"
-                )}>
-                  {s === 1 && "Profissional"}
-                  {s === 2 && "Serviço"}
-                  {s === 3 && "Data"}
-                  {s === 4 && "Confirmar"}
-                </span>
+          {activeTab === 'new' ? (
+            <>
+              {/* New Progress Steps - Desktop Only */}
+              <div className="hidden md:flex justify-between items-center max-w-2xl mx-auto relative">
+                {/* Connecting Line */}
+                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-navy-800 -z-10 transform -translate-y-1/2"></div>
+                <div 
+                  className="absolute top-1/2 left-0 h-0.5 bg-gold-500 -z-10 transform -translate-y-1/2 transition-all duration-500"
+                  style={{ width: `${((step - 1) / 3) * 100}%` }}
+                ></div>
+
+                {[1, 2, 3, 4].map((s) => (
+                  <div key={s} className="flex flex-col items-center gap-2">
+                    <motion.div 
+                      initial={false}
+                      animate={{ 
+                        scale: step === s ? 1.1 : 1,
+                        backgroundColor: step >= s ? '#D4AF37' : '#1a202c',
+                        borderColor: step >= s ? '#D4AF37' : '#2d3748'
+                      }}
+                      className={cn(
+                        "w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 z-10",
+                        step >= s ? "text-navy-900 shadow-[0_0_10px_rgba(212,175,55,0.3)]" : "text-gray-500 border-navy-700 bg-navy-900"
+                      )}
+                    >
+                      {s === 1 && <User size={14} />}
+                      {s === 2 && <Scissors size={14} />}
+                      {s === 3 && <CalendarIcon size={14} />}
+                      {s === 4 && <CheckCircle size={14} />}
+                    </motion.div>
+                    <span className={cn(
+                      "text-xs font-medium uppercase tracking-wider hidden md:block transition-colors duration-300",
+                      step >= s ? "text-gold-500" : "text-gray-600"
+                    )}>
+                      {s === 1 && "Profissional"}
+                      {s === 2 && "Serviço"}
+                      {s === 3 && "Data"}
+                      {s === 4 && "Confirmar"}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Mobile Progress Bar */}
-          <div className="md:hidden max-w-xs mx-auto">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] uppercase tracking-[0.2em] text-gold-500 font-bold">Passo {step} de 4</span>
-              <span className="text-[10px] uppercase tracking-[0.2em] text-gray-500">{getStepTitle()}</span>
-            </div>
-            <div className="h-1 w-full bg-navy-800 rounded-full overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${(step / 4) * 100}%` }}
-                className="h-full bg-gold-500"
-              />
-            </div>
-          </div>
+              {/* Mobile Progress Bar */}
+              <div className="md:hidden max-w-xs mx-auto">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-gold-500 font-bold">Passo {step} de 4</span>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-gray-500">{getStepTitle()}</span>
+                </div>
+                <div className="h-1 w-full bg-navy-800 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(step / 4) * 100}%` }}
+                    className="h-full bg-gold-500"
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-gray-400 max-w-md mx-auto text-sm">Consulte seus horários agendados e gerencie seus compromissos com facilidade.</p>
+          )}
         </div>
 
         <div className="glass-panel backdrop-blur-md md:backdrop-blur-2xl rounded-2xl md:rounded-3xl border border-white/10 p-4 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-h-[450px] md:min-h-[500px] relative overflow-hidden group">
@@ -218,8 +262,11 @@ export default function Booking() {
           <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-bl from-gold-500/20 to-transparent rounded-bl-full pointer-events-none"></div>
 
           <AnimatePresence mode="wait">
-            
-            {/* STEP 1: BARBER */}
+            {activeTab === 'portal' ? (
+              <ClientPortal key="portal" />
+            ) : (
+              <>
+                {/* STEP 1: BARBER */}
             {step === 1 && (
               <motion.div
                 key="step1"
@@ -423,23 +470,39 @@ export default function Booking() {
                           key={time}
                           disabled={occupied}
                           onClick={() => setSelectedTime(time)}
-                          whileHover={!occupied ? { scale: 1.05 } : {}}
-                          whileTap={!occupied ? { scale: 0.95 } : {}}
+                          whileHover={!occupied ? { scale: 1.05 } : { x: [0, -2, 2, -2, 2, 0] }}
+                          whileTap={!occupied ? { scale: 0.95 } : { scale: 0.98 }}
                           className={cn(
-                            "py-4 rounded-xl text-sm font-bold border transition-all relative overflow-hidden",
+                            "py-4 rounded-xl text-sm font-bold border transition-all relative overflow-hidden group",
                             selectedTime === time 
                               ? "bg-gold-500 text-navy-900 border-gold-500 shadow-[0_0_15px_rgba(212,175,55,0.3)]" 
                               : occupied 
-                                ? "bg-navy-900/30 text-gray-600 border-transparent cursor-not-allowed opacity-50 grayscale"
+                                ? "bg-navy-900/40 text-gray-600 border-red-500/20 cursor-not-allowed"
                                 : "bg-navy-900 text-white border-white/10 hover:border-gold-500/50 hover:bg-navy-800"
                           )}
                         >
-                          {time}
+                          <span className={cn(occupied && "opacity-20")}>{time}</span>
+                          
                           {occupied && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-navy-900/90 backdrop-blur-[2px] border border-red-500/30 rounded-xl">
-                              <span className="text-[0.6rem] font-bold uppercase tracking-widest text-red-500 bg-red-500/10 px-2 py-1 rounded border border-red-500/20 shadow-sm">
-                                Ocupado
-                              </span>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                              {/* Diagonal Banner */}
+                              <div className="absolute top-0 right-0 transform translate-x-[30%] -translate-y-[20%] rotate-45 bg-red-600 text-white text-[8px] font-black py-1 px-8 shadow-lg z-10 uppercase tracking-tighter">
+                                Indisponível
+                              </div>
+                              
+                              {/* Central Badge */}
+                              <motion.div 
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded backdrop-blur-sm"
+                              >
+                                <span className="text-[9px] font-black uppercase tracking-widest text-red-500">
+                                  Ocupado
+                                </span>
+                              </motion.div>
+                              
+                              {/* Subtle Red Glow on Hover */}
+                              <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             </div>
                           )}
                         </motion.button>
@@ -572,50 +635,211 @@ export default function Booking() {
                 </div>
               </motion.div>
             )}
-
+              </>
+            )}
           </AnimatePresence>
 
           {/* Navigation Buttons */}
-          <div className="mt-8 md:mt-12 flex flex-col sm:flex-row justify-between pt-6 md:pt-8 border-t border-white/5 gap-4">
-            <button
-              onClick={handleBack}
-              disabled={step === 1}
-              className={cn(
-                "px-6 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 group order-2 sm:order-1",
-                step === 1 ? "text-gray-600 cursor-not-allowed opacity-0" : "text-gray-400 hover:text-white"
-              )}
-            >
-              <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> Voltar
-            </button>
+          {activeTab === 'new' && (
+            <div className="mt-8 md:mt-12 flex flex-col sm:flex-row justify-between pt-6 md:pt-8 border-t border-white/5 gap-4">
+              <button
+                onClick={handleBack}
+                disabled={step === 1}
+                className={cn(
+                  "px-6 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 group order-2 sm:order-1",
+                  step === 1 ? "text-gray-600 cursor-not-allowed opacity-0" : "text-gray-400 hover:text-white"
+                )}
+              >
+                <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> Voltar
+              </button>
 
-            {step < 4 ? (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleNext}
-                disabled={
-                  (step === 1 && !selectedBarber) ||
-                  (step === 2 && !selectedService) ||
-                  (step === 3 && !selectedTime)
-                }
-                className="px-8 md:px-10 py-4 bg-gold-500 text-navy-900 rounded-xl font-bold hover:bg-gold-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:shadow-[0_0_30px_rgba(212,175,55,0.5)] order-1 sm:order-2"
-              >
-                Próximo Passo <ChevronRight size={20} />
-              </motion.button>
-            ) : (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleConfirm}
-                disabled={!customerName || !customerPhone}
-                className="px-8 md:px-10 py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)] order-1 sm:order-2"
-              >
-                Confirmar Agendamento <CheckCircle size={20} />
-              </motion.button>
-            )}
-          </div>
+              {step < 4 ? (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleNext}
+                  disabled={
+                    (step === 1 && !selectedBarber) ||
+                    (step === 2 && !selectedService) ||
+                    (step === 3 && !selectedTime)
+                  }
+                  className="px-8 md:px-10 py-4 bg-gold-500 text-navy-900 rounded-xl font-bold hover:bg-gold-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:shadow-[0_0_30px_rgba(212,175,55,0.5)] order-1 sm:order-2"
+                >
+                  Próximo Passo <ChevronRight size={20} />
+                </motion.button>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleConfirm}
+                  disabled={!customerName || !customerPhone}
+                  className="px-8 md:px-10 py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)] order-1 sm:order-2"
+                >
+                  Confirmar Agendamento <CheckCircle size={20} />
+                </motion.button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+function ClientPortal() {
+  const { appointments, cancelAppointment, getBarberName, getServiceName } = useData();
+  const [phone, setPhone] = useState('');
+  const [searchResult, setSearchResult] = useState<Appointment[] | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const handleSearch = () => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      alert('Por favor, digite um número de telefone válido.');
+      return;
+    }
+
+    const found = appointments.filter(a => {
+      const aPhone = a.clientPhone.replace(/\D/g, '');
+      return aPhone === cleanPhone;
+    });
+
+    setSearchResult(found);
+    setHasSearched(true);
+  };
+
+  const handleCancel = (id: string, clientName: string, serviceName: string, date: string) => {
+    if (window.confirm('Tem certeza que deseja cancelar este agendamento?')) {
+      cancelAppointment(id);
+      
+      // Update local search result
+      setSearchResult(prev => prev ? prev.map(a => a.id === id ? { ...a, status: 'cancelled' } : a) : null);
+
+      // Send WhatsApp notification to owner about client cancellation
+      const dateObj = new Date(date);
+      const dateStr = format(dateObj, "dd/MM/yyyy", { locale: ptBR });
+      const timeStr = format(dateObj, "HH:mm", { locale: ptBR });
+      
+      const message = `*CANCELAMENTO PELO CLIENTE*\n\nO cliente *${clientName}* cancelou o agendamento de *${serviceName}* marcado para o dia ${dateStr} às ${timeStr}.\n\nO horário já está disponível novamente no sistema.`;
+      window.open(`https://wa.me/5581981333889?text=${encodeURIComponent(message)}`, '_blank');
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-2xl mx-auto"
+    >
+      <div className="text-center mb-10">
+        <div className="w-16 h-16 bg-gold-500/10 rounded-2xl flex items-center justify-center text-gold-500 mx-auto mb-4 border border-gold-500/20">
+          <CalendarIcon size={32} />
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-2">Meus Agendamentos</h2>
+        <p className="text-gray-400">Digite seu WhatsApp para consultar seus horários.</p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-4 mb-12">
+        <div className="flex-1 relative">
+          <input 
+            type="tel" 
+            value={phone}
+            onChange={(e) => {
+              let val = e.target.value.replace(/\D/g, '');
+              if (val.length > 11) val = val.slice(0, 11);
+              let masked = val;
+              if (val.length > 2) masked = `(${val.slice(0, 2)}) ${val.slice(2)}`;
+              if (val.length > 7) masked = `(${val.slice(0, 2)}) ${val.slice(2, 7)}-${val.slice(7)}`;
+              setPhone(masked);
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="w-full bg-navy-900/50 border border-white/10 rounded-xl p-4 pl-12 text-white focus:border-gold-500 focus:outline-none transition-all"
+            placeholder="(00) 00000-0000"
+          />
+          <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500" size={20} />
+        </div>
+        <button
+          onClick={handleSearch}
+          className="px-8 py-4 bg-gold-500 text-navy-900 rounded-xl font-bold hover:bg-gold-400 transition-all shadow-lg"
+        >
+          Consultar
+        </button>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {hasSearched && searchResult && searchResult.length > 0 ? (
+          <motion.div 
+            key="results"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-4"
+          >
+            {searchResult.map((appt) => (
+              <div 
+                key={appt.id}
+                className={cn(
+                  "p-6 rounded-2xl border transition-all flex flex-col sm:flex-row justify-between items-center gap-6",
+                  appt.status === 'cancelled' ? "bg-navy-900/20 border-white/5 opacity-60" : "bg-white/5 border-white/10"
+                )}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "w-12 h-12 rounded-xl flex items-center justify-center",
+                    appt.status === 'cancelled' ? "bg-gray-800 text-gray-500" : "bg-gold-500/10 text-gold-500"
+                  )}>
+                    <Scissors size={24} />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-bold">{getServiceName(appt.serviceId)}</h4>
+                    <p className="text-gray-400 text-sm">{getBarberName(appt.barberId)}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-xs text-gold-500 font-medium flex items-center gap-1">
+                        <CalendarIcon size={12} /> {format(new Date(appt.date), "dd/MM/yyyy", { locale: ptBR })}
+                      </span>
+                      <span className="text-xs text-gold-500 font-medium flex items-center gap-1">
+                        <Clock size={12} /> {format(new Date(appt.date), "HH:mm", { locale: ptBR })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  {appt.status === 'cancelled' ? (
+                    <span className="text-xs font-bold uppercase tracking-widest text-red-500 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
+                      Cancelado
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-xs font-bold uppercase tracking-widest text-green-500 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
+                        Confirmado
+                      </span>
+                      <button
+                        onClick={() => handleCancel(appt.id, appt.clientName, getServiceName(appt.serviceId), appt.date)}
+                        className="text-gray-500 hover:text-red-500 transition-colors p-2"
+                        title="Cancelar Agendamento"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        ) : hasSearched ? (
+          <motion.div 
+            key="no-results"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12 bg-navy-900/30 rounded-3xl border border-dashed border-white/10"
+          >
+            <div className="text-gray-500 mb-4 flex justify-center">
+              <CalendarIcon size={48} className="opacity-20" />
+            </div>
+            <p className="text-gray-400">Nenhum agendamento encontrado para este número.</p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </motion.div>
   );
 }

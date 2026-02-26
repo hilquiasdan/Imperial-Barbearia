@@ -176,7 +176,7 @@ export default function Admin() {
     const dateStr = new Date(app.date).toLocaleDateString('pt-BR');
     const timeStr = new Date(app.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     
-    const message = `*MENSAGEM INSTITUCIONAL - IMPERIAL BARBEARIA*\n\nPrezado(a) *${app.clientName}*,\n\nLamentamos informar que, por motivos de força maior, seu agendamento de *${getServiceName(app.serviceId)}* com o profissional *${getBarberName(app.barberId)}* para o dia ${dateStr} às ${timeStr} precisou ser cancelado.\n\nPedimos sinceras desculpas pelo inconveniente. Gostaríamos de convidá-lo(a) a realizar um novo agendamento através do nosso site ou respondendo a esta mensagem para encontrarmos um novo horário.\n\nAtenciosamente,\n*Equipe Imperial Barbearia*`;
+    const message = `*IMPERIAL BARBEARIA*\n\nPrezado(a) *${app.clientName}*,\n\nLamentamos informar que, por motivos de força maior, seu agendamento de *${getServiceName(app.serviceId)}* com o profissional *${getBarberName(app.barberId)}* para o dia ${dateStr} às ${timeStr} precisou ser cancelado.\n\nPedimos sinceras desculpas pelo inconveniente. Gostaríamos de convidá-lo(a) a realizar um novo agendamento através do nosso site ou respondendo a esta mensagem para encontrarmos um novo horário.\n\nAtenciosamente,\n*Equipe Imperial Barbearia*`;
     
     const whatsappUrl = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`;
     

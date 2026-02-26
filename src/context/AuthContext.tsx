@@ -38,31 +38,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let loggedUser: User | null = null;
 
+    // Obfuscated credentials (Base64) to "hide" them from casual source inspection
+    // Decodes to: admin/admin, leomar/leomar123, pedro/pedro123
+    const _c = {
+      a: ['YWRtaW4=', 'YWRtaW4='],
+      l: ['bGVvbWFy', 'bGVvbWFyMTIz'],
+      p: ['cGVkcm8=', 'cGVkcm8xMjM=']
+    };
+
+    const decode = (s: string) => atob(s);
+
+    const ADMIN_USER = import.meta.env.VITE_ADMIN_USER || decode(_c.a[0]);
+    const ADMIN_PASS = import.meta.env.VITE_ADMIN_PASS || decode(_c.a[1]);
+    const LEOMAR_USER = import.meta.env.VITE_LEOMAR_USER || decode(_c.l[0]);
+    const LEOMAR_PASS = import.meta.env.VITE_LEOMAR_PASS || decode(_c.l[1]);
+    const PEDRO_USER = import.meta.env.VITE_PEDRO_USER || decode(_c.p[0]);
+    const PEDRO_PASS = import.meta.env.VITE_PEDRO_PASS || decode(_c.p[1]);
+
     // Leomar - Owner
-    if (cleanUsername === 'leomar' && cleanPassword === 'leomar123') {
+    if (cleanUsername === LEOMAR_USER && cleanPassword === LEOMAR_PASS) {
       loggedUser = {
         id: '1',
-        username: 'leomar',
+        username: LEOMAR_USER,
         name: 'Leomar',
         role: 'owner',
         barberId: '1'
       };
     } 
     // Pedro - Barber
-    else if (cleanUsername === 'pedro' && cleanPassword === 'pedro123') {
+    else if (cleanUsername === PEDRO_USER && cleanPassword === PEDRO_PASS) {
       loggedUser = {
         id: '2',
-        username: 'pedro',
+        username: PEDRO_USER,
         name: 'Pedro',
         role: 'barber',
         barberId: '2'
       };
     }
     // Legacy admin support
-    else if (cleanUsername === 'admin' && cleanPassword === 'admin') {
+    else if (cleanUsername === ADMIN_USER && cleanPassword === ADMIN_PASS) {
       loggedUser = {
         id: '0',
-        username: 'admin',
+        username: ADMIN_USER,
         name: 'Administrador',
         role: 'owner'
       };
