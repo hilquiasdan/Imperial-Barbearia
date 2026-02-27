@@ -31,11 +31,15 @@ interface DataContextType {
   services: Service[];
   barbers: Barber[];
   appointments: Appointment[];
-  addService: (service: Omit<Service, 'id'>) => void;
-  updateService: (id: string, service: Partial<Service>) => void;
-  deleteService: (id: string) => void;
-  addAppointment: (appointment: Omit<Appointment, 'id' | 'status'>) => void;
-  cancelAppointment: (id: string) => void;
+  loading: boolean;
+  addService: (service: Omit<Service, 'id'>) => Promise<void>;
+  updateService: (id: string, service: Partial<Service>) => Promise<void>;
+  deleteService: (id: string) => Promise<void>;
+  addBarber: (barber: Omit<Barber, 'id'>) => Promise<void>;
+  updateBarber: (id: string, barber: Partial<Barber>) => Promise<void>;
+  deleteBarber: (id: string) => Promise<void>;
+  addAppointment: (appointment: Omit<Appointment, 'id' | 'status'>) => Promise<void>;
+  cancelAppointment: (id: string) => Promise<void>;
   getBarberName: (id: string) => string;
   getServiceName: (id: string) => string;
 }
@@ -44,52 +48,166 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const [services, setServices] = useState<Service[]>(() => {
-    const stored = localStorage.getItem('services');
-    return stored ? JSON.parse(stored) : INITIAL_SERVICES;
-  });
+  const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
+  const [barbers, setBarbers] = useState<Barber[]>(INITIAL_BARBERS);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [barbers] = useState<Barber[]>(INITIAL_BARBERS);
-
-  const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    const stored = localStorage.getItem('imperial_appointments_v2');
-    return stored ? JSON.parse(stored) : [];
-  });
-
+  // Initial fetch
   useEffect(() => {
-    localStorage.setItem('services', JSON.stringify(services));
-  }, [services]);
+    const fetchData = async () => {
+      try {
+        const [servicesRes, barbersRes, appointmentsRes] = await Promise.all([
+          fetch('/api/services'),
+          fetch('/api/barbers'),
+          fetch('/api/appointments')
+        ]);
 
-  useEffect(() => {
-    localStorage.setItem('imperial_appointments_v2', JSON.stringify(appointments));
-  }, [appointments]);
+        if (servicesRes.ok) setServices(await servicesRes.json());
+        if (barbersRes.ok) setBarbers(await barbersRes.json());
+        if (appointmentsRes.ok) setAppointments(await appointmentsRes.json());
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const addService = (service: Omit<Service, 'id'>) => {
+    fetchData();
+  }, []);
+
+  const addService = async (service: Omit<Service, 'id'>) => {
     const newService = { ...service, id: Date.now().toString() };
-    setServices([...services, newService]);
+    try {
+      const response = await fetch('/api/services', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newService)
+      });
+      if (response.ok) {
+        setServices([...services, newService]);
+      }
+    } catch (error) {
+      console.error("Error adding service:", error);
+    }
   };
 
-  const updateService = (id: string, updatedService: Partial<Service>) => {
-    setServices(services.map(s => s.id === id ? { ...s, ...updatedService } : s));
+  const updateService = async (id: string, updatedService: Partial<Service>) => {
+    const currentService = services.find(s => s.id === id);
+    if (!currentService) return;
+    const merged = { ...currentService, ...updatedService };
+    try {
+      const response = await fetch(`/api/services/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(merged)
+      });
+      if (response.ok) {
+        setServices(services.map(s => s.id === id ? merged : s));
+      }
+    } catch (error) {
+      console.error("Error updating service:", error);
+    }
   };
 
-  const deleteService = (id: string) => {
-    setServices(services.filter(s => s.id !== id));
+  const deleteService = async (id: string) => {
+    try {
+      const response = await fetch(`/api/services/${id}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        setServices(services.filter(s => s.id !== id));
+      }
+    } catch (error) {
+      console.error("Error deleting service:", error);
+    }
   };
 
-  const addAppointment = (appointment: Omit<Appointment, 'id' | 'status'>) => {
+  const addBarber = async (barber: Omit<Barber, 'id'>) => {
+    const newBarber = { ...barber, id: Date.now().toString() };
+    try {
+      const response = await fetch('/api/barbers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBarber)
+      });
+      if (response.ok) {
+        setBarbers([...barbers, newBarber]);
+      }
+    } catch (error) {
+      console.error("Error adding barber:", error);
+    }
+  };
+
+  const updateBarber = async (id: string, updatedBarber: Partial<Barber>) => {
+    const currentBarber = barbers.find(b => b.id === id);
+    if (!currentBarber) return;
+    const merged = { ...currentBarber, ...updatedBarber };
+    try {
+      const response = await fetch(`/api/barbers/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(merged)
+      });
+      if (response.ok) {
+        setBarbers(barbers.map(b => b.id === id ? merged : b));
+      }
+    } catch (error) {
+      console.error("Error updating barber:", error);
+    }
+  };
+
+  const deleteBarber = async (id: string) => {
+    try {
+      const response = await fetch(`/api/barbers/${id}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        setBarbers(barbers.filter(b => b.id !== id));
+      }
+    } catch (error) {
+      console.error("Error deleting barber:", error);
+    }
+  };
+
+  const addAppointment = async (appointment: Omit<Appointment, 'id' | 'status'>) => {
     const newAppointment: Appointment = {
       ...appointment,
       id: Date.now().toString(),
       status: 'confirmed'
     };
-    setAppointments([newAppointment, ...appointments]);
+
+    try {
+      const response = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAppointment)
+      });
+
+      if (response.ok) {
+        setAppointments([newAppointment, ...appointments]);
+      }
+    } catch (error) {
+      console.error("Error saving appointment:", error);
+    }
   };
 
-  const cancelAppointment = (id: string) => {
-    setAppointments(appointments.map(a => 
-      a.id === id ? { ...a, status: 'cancelled' } : a
-    ));
+  const cancelAppointment = async (id: string) => {
+    try {
+      const response = await fetch(`/api/appointments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' })
+      });
+
+      if (response.ok) {
+        setAppointments(appointments.map(a => 
+          a.id === id ? { ...a, status: 'cancelled' } : a
+        ));
+      }
+    } catch (error) {
+      console.error("Error cancelling appointment:", error);
+    }
   };
 
   const getBarberName = (id: string) => barbers.find(b => b.id === id)?.name || 'Desconhecido';
@@ -100,9 +218,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       services,
       barbers,
       appointments,
+      loading,
       addService,
       updateService,
       deleteService,
+      addBarber,
+      updateBarber,
+      deleteBarber,
       addAppointment,
       cancelAppointment,
       getBarberName,

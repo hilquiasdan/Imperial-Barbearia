@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <div className="relative min-h-screen flex flex-col">
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden">
         {/* Background with Parallax/Texture */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-navy-900/75 z-10"></div>
@@ -17,6 +17,7 @@ export default function Home() {
             src="https://images.unsplash.com/photo-1503951914875-befbb6470523?q=80&w=2068&auto=format&fit=crop" 
             alt="Barbershop Background" 
             className="w-full h-full object-cover"
+            loading="eager"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?q=80&w=800&auto=format&fit=crop';
@@ -201,6 +202,7 @@ export default function Home() {
                 src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=2070&auto=format&fit=crop" 
                 alt="Interior Barbearia" 
                 className="rounded-lg shadow-2xl relative z-10 md:grayscale md:hover:grayscale-0 transition-all duration-500"
+                loading="lazy"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?q=80&w=800&auto=format&fit=crop';

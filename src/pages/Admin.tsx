@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useData, Appointment, Service } from '../context/DataContext';
+import { useData, Appointment, Service, Barber } from '../context/DataContext';
 import { useNavigate } from 'react-router-dom';
+import { formatCurrency } from '../utils';
 import { 
   LogOut, Calendar, Users, Settings, BarChart2, Menu, X, Bell, 
   Trash2, Edit, Plus, Download, DollarSign, Scissors, TrendingUp, UserCheck, Clock
@@ -16,6 +17,7 @@ export default function Admin() {
   const { 
     appointments, services, barbers, 
     cancelAppointment, addService, updateService, deleteService,
+    addBarber, updateBarber, deleteBarber,
     getBarberName, getServiceName 
   } = useData();
   const navigate = useNavigate();
@@ -202,6 +204,40 @@ export default function Admin() {
     setEditingService(null);
   };
 
+  // --- Barbers Logic ---
+  const [editingBarber, setEditingBarber] = useState<Partial<Barber> | null>(null);
+  const [isBarberModalOpen, setIsBarberModalOpen] = useState(false);
+
+  const handleSaveBarber = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingBarber?.id) {
+      updateBarber(editingBarber.id, editingBarber);
+    } else {
+      addBarber(editingBarber as Omit<Barber, 'id'>);
+    }
+    setIsBarberModalOpen(false);
+    setEditingBarber(null);
+  };
+
+  const [monthlyStats, setMonthlyStats] = useState<{ month: string, totalCuts: number, totalRevenue: number }[]>([]);
+
+  useEffect(() => {
+    const fetchMonthlyStats = async () => {
+      try {
+        const response = await fetch('/api/stats/monthly');
+        if (response.ok) {
+          setMonthlyStats(await response.json());
+        }
+      } catch (error) {
+        console.error("Error fetching monthly stats:", error);
+      }
+    };
+
+    if (activeTab === 'dashboard' || activeTab === 'reports') {
+      fetchMonthlyStats();
+    }
+  }, [activeTab, appointments]);
+
   const menuItems = useMemo(() => {
     const items = [
       { id: 'appointments', label: 'Agenda', icon: Calendar },
@@ -209,6 +245,8 @@ export default function Admin() {
     
     if (user?.role === 'owner') {
       items.unshift({ id: 'dashboard', label: 'Visão Geral', icon: BarChart2 });
+      items.push({ id: 'reports', label: 'Relatórios', icon: TrendingUp });
+      items.push({ id: 'barbers', label: 'Barbeiros', icon: Users });
       items.push({ id: 'services', label: 'Serviços', icon: Scissors });
     }
     
@@ -533,6 +571,98 @@ export default function Admin() {
             </div>
           )}
 
+          {/* REPORTS TAB */}
+          {activeTab === 'reports' && user?.role === 'owner' && (
+            <div className="space-y-6 max-w-5xl mx-auto">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Relatórios Mensais</h2>
+                <p className="text-gray-400 text-sm">Acompanhamento de faturamento e produtividade por mês</p>
+              </div>
+
+              <div className="bg-[#1e293b]/50 backdrop-blur-sm rounded-2xl border border-white/5 overflow-hidden shadow-xl">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[#0f172a] border-b border-white/5">
+                      <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-500">Mês/Ano</th>
+                      <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-500">Qtd. Cortes</th>
+                      <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-500">Faturamento</th>
+                      <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-500">Ticket Médio</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {monthlyStats.map((stat) => {
+                      const [year, month] = stat.month.split('-');
+                      const date = new Date(Number(year), Number(month) - 1);
+                      const monthName = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                      
+                      return (
+                        <tr key={stat.month} className="hover:bg-white/5 transition-colors">
+                          <td className="p-4 font-bold text-white capitalize">{monthName}</td>
+                          <td className="p-4 text-gray-300">{stat.totalCuts} cortes</td>
+                          <td className="p-4 text-gold-500 font-bold">{formatCurrency(stat.totalRevenue)}</td>
+                          <td className="p-4 text-gray-400">{formatCurrency(stat.totalRevenue / stat.totalCuts)}</td>
+                        </tr>
+                      );
+                    })}
+                    {monthlyStats.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="p-12 text-center text-gray-500">
+                          Nenhum dado disponível para gerar relatórios.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* BARBERS TAB */}
+          {activeTab === 'barbers' && user?.role === 'owner' && (
+            <div className="space-y-6 max-w-5xl mx-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-white">Gerenciar Barbeiros</h2>
+                <button 
+                  onClick={() => { setEditingBarber({}); setIsBarberModalOpen(true); }}
+                  className="bg-gold-500 text-navy-900 px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-gold-400 transition-colors shadow-lg shadow-gold-500/20"
+                >
+                  <Plus size={20} /> Novo Barbeiro
+                </button>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {barbers.map((barber) => (
+                  <div key={barber.id} className="bg-[#1e293b]/50 backdrop-blur-sm p-6 rounded-2xl border border-white/5 hover:border-gold-500/30 transition-all group shadow-lg hover:shadow-xl hover:-translate-y-1">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gold-500/30">
+                        <img src={barber.image} alt={barber.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => { setEditingBarber(barber); setIsBarberModalOpen(true); }}
+                          className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-colors"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button 
+                          onClick={() => { if(window.confirm('Excluir barbeiro?')) deleteBarber(barber.id); }}
+                          className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500 hover:text-white transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <h3 className="font-bold text-white text-lg mb-1">{barber.name}</h3>
+                    <p className="text-gray-400 text-sm flex items-center gap-2 mt-2">
+                      <Bell size={14} className="text-gold-500" /> {barber.phone}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* SERVICES TAB */}
           {activeTab === 'services' && user?.role === 'owner' && (
             <div className="space-y-6 max-w-5xl mx-auto">
@@ -579,6 +709,79 @@ export default function Admin() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Barber Modal */}
+          {isBarberModalOpen && (
+            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-[#1e293b] w-full max-w-md rounded-2xl p-8 border border-white/10 shadow-2xl relative"
+              >
+                <button 
+                  onClick={() => setIsBarberModalOpen(false)}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                >
+                  <X size={24} />
+                </button>
+                
+                <h3 className="text-2xl font-bold text-white mb-6">
+                  {editingBarber?.id ? 'Editar Barbeiro' : 'Novo Barbeiro'}
+                </h3>
+                
+                <form onSubmit={handleSaveBarber} className="space-y-5">
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-2 font-medium">Nome do Barbeiro</label>
+                    <input 
+                      type="text" 
+                      value={editingBarber?.name || ''} 
+                      onChange={e => setEditingBarber({...editingBarber, name: e.target.value})}
+                      className="w-full bg-[#0f172a] border border-white/10 rounded-xl p-3 text-white focus:border-gold-500 outline-none transition-colors"
+                      placeholder="Ex: João Silva"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-2 font-medium">WhatsApp (com DDD)</label>
+                    <input 
+                      type="text" 
+                      value={editingBarber?.phone || ''} 
+                      onChange={e => setEditingBarber({...editingBarber, phone: e.target.value})}
+                      className="w-full bg-[#0f172a] border border-white/10 rounded-xl p-3 text-white focus:border-gold-500 outline-none transition-colors"
+                      placeholder="Ex: 5581999999999"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-2 font-medium">URL da Foto</label>
+                    <input 
+                      type="text" 
+                      value={editingBarber?.image || ''} 
+                      onChange={e => setEditingBarber({...editingBarber, image: e.target.value})}
+                      className="w-full bg-[#0f172a] border border-white/10 rounded-xl p-3 text-white focus:border-gold-500 outline-none transition-colors"
+                      placeholder="https://..."
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-3 mt-8">
+                    <button 
+                      type="button"
+                      onClick={() => setIsBarberModalOpen(false)}
+                      className="flex-1 bg-[#0f172a] text-white py-3 rounded-xl font-bold hover:bg-[#334155] transition-colors border border-white/10"
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      type="submit"
+                      className="flex-1 bg-gold-500 text-navy-900 py-3 rounded-xl font-bold hover:bg-gold-400 transition-colors shadow-lg shadow-gold-500/20"
+                    >
+                      Salvar
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
             </div>
           )}
 

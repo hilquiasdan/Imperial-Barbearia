@@ -14,18 +14,22 @@ export const formatCurrency = (value: number) => {
 };
 
 export const SERVICES_DATA = [
-  { id: '1', name: 'Corte Masculino', price: 50, duration: 45, image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=800&auto=format&fit=crop' },
-  { id: '2', name: 'Barba Tradicional', price: 35, duration: 30, image: 'https://images.unsplash.com/photo-1503951914875-befbb6470523?q=80&w=800&auto=format&fit=crop' },
-  { id: '3', name: 'Corte + Barba', price: 80, duration: 75, image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=800&auto=format&fit=crop' },
-  { id: '4', name: 'Barba Premium (Toalha Quente)', price: 45, duration: 40, image: 'https://images.unsplash.com/photo-1532710093739-947053e41482?q=80&w=800&auto=format&fit=crop' },
-  { id: '5', name: 'Pigmentação de Barba', price: 30, duration: 30, image: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?q=80&w=800&auto=format&fit=crop' },
-  { id: '6', name: 'Sobrancelha Masculina', price: 20, duration: 15, image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=800&auto=format&fit=crop' },
-  { id: '7', name: 'Corte Infantil', price: 45, duration: 40, image: 'https://images.unsplash.com/photo-1599351431613-18ef1fdd27e1?q=80&w=800&auto=format&fit=crop' },
-  { id: '8', name: 'Design de Barba', price: 25, duration: 20, image: 'https://images.unsplash.com/photo-1552058544-f2b08422138a?q=80&w=800&auto=format&fit=crop' },
-  { id: '9', name: 'Hidratação Capilar', price: 40, duration: 30, image: 'https://images.unsplash.com/photo-1560365163-3e8d64a762ef?q=80&w=800&auto=format&fit=crop' },
-  { id: '10', name: 'Luzes Masculinas', price: 90, duration: 90, image: 'https://images.unsplash.com/photo-1597005954639-95a1d1b89a81?q=80&w=800&auto=format&fit=crop' },
-  { id: '11', name: 'Alisamento Masculino', price: 80, duration: 60, image: 'https://images.unsplash.com/photo-1623826580603-66d924824e4a?q=80&w=800&auto=format&fit=crop' },
-  { id: '12', name: 'Massagem Capilar', price: 30, duration: 20, image: 'https://images.unsplash.com/photo-1616394584738-65b431c4290a?q=80&w=800&auto=format&fit=crop' }
+  { id: '1', name: 'Corte Degradê Social ou Moicano', price: 50, duration: 45, image: 'https://i.postimg.cc/90zRYMhq/Corte-Degrade-Social-Ou-Moicano.webp' },
+  { id: '2', name: 'Barba', price: 30, duration: 30, image: 'https://i.postimg.cc/vmHVZXN7/Barba.jpg' },
+  { id: '3', name: 'Corte + Barba', price: 80, duration: 75, image: 'https://i.postimg.cc/Hn5JhNrG/Corte-Barba.jpg' },
+  { id: '4', name: 'Cabelo + Barba + Sobrancelha', price: 95, duration: 90, image: 'https://i.postimg.cc/J0Jy2FGv/Cabelo-Barba-Sobrancelha.jpg' },
+  { id: '5', name: 'Barba Pigmentada', price: 40, duration: 40, image: 'https://i.postimg.cc/RVKfsWtL/Barba-Pigmentada.jpg' },
+  { id: '6', name: 'Pezinho', price: 15, duration: 15, image: 'https://i.postimg.cc/grFzLkcq/Pezinho.jpg' },
+  { id: '7', name: 'Corte Infantil', price: 45, duration: 40, image: 'https://i.postimg.cc/GtYB5fHS/Corte-Infantil.jpg' },
+  { id: '8', name: 'Corte na Tesoura', price: 60, duration: 50, image: 'https://i.postimg.cc/wMJtGr7P/Corte-na-Tesoura.jpg' },
+  { id: '9', name: 'Corte Pente Único', price: 40, duration: 30, image: 'https://i.postimg.cc/4ytKS0mr/Corte-Pente-Unico.jpg' },
+  { id: '10', name: 'Corte + Pigmentação', price: 75, duration: 60, image: 'https://i.postimg.cc/PJZLR7P7/Corte-Pigmentacao.jpg' },
+  { id: '11', name: 'Hidratação + Finalização', price: 40, duration: 30, image: 'https://i.postimg.cc/fyX3rPVh/Hidratacao-Finalizacao.jpg' },
+  { id: '12', name: 'Limpeza de Pele', price: 35, duration: 30, image: 'https://i.postimg.cc/1X6gjd81/Limpeza-de-Pele.jpg' },
+  { id: '13', name: 'Limpeza Nasal', price: 15, duration: 15, image: 'https://i.postimg.cc/d04VNYnC/Limpeza-Nasal.webp' },
+  { id: '14', name: 'Luzes + Corte', price: 120, duration: 120, image: 'https://i.postimg.cc/0jm6B4zs/Luzes-Corte.jpg' },
+  { id: '15', name: 'Platinado + Corte', price: 150, duration: 150, image: 'https://i.postimg.cc/NFTyznKY/Platinado-Corte.jpg' },
+  { id: '16', name: 'Selagem + Corte', price: 110, duration: 90, image: 'https://i.postimg.cc/gjRwT7xm/Selagem-Corte.jpg' }
 ];
 
 export const BARBERS = [

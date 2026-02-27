@@ -123,21 +123,13 @@ export default function Booking() {
   };
 
   const getServiceIcon = (id: string) => {
-    switch (id) {
-      case '1': return <Scissors size={24} />;
-      case '2': return <User size={24} />;
-      case '3': return <Scissors size={24} />;
-      case '4': return <Sparkles size={24} />;
-      case '5': return <Palette size={24} />;
-      case '6': return <Eye size={24} />;
-      case '7': return <Smile size={24} />;
-      case '8': return <PenTool size={24} />;
-      case '9': return <Droplets size={24} />;
-      case '10': return <Sun size={24} />;
-      case '11': return <Wind size={24} />;
-      case '12': return <HeartHandshake size={24} />;
-      default: return <Scissors size={24} />;
-    }
+    const name = services.find(s => s.id === id)?.name.toLowerCase() || '';
+    if (name.includes('corte') && name.includes('barba')) return <Sparkles size={24} />;
+    if (name.includes('corte')) return <Scissors size={24} />;
+    if (name.includes('barba')) return <User size={24} />;
+    if (name.includes('limpeza')) return <Sparkles size={24} />;
+    if (name.includes('luzes') || name.includes('platinado')) return <Sun size={24} />;
+    return <Scissors size={24} />;
   };
 
   return (
@@ -300,7 +292,10 @@ export default function Booking() {
                         <img 
                           src={barber.image} 
                           alt={barber.name} 
-                          className="w-full h-full object-cover"
+                          className={cn(
+                            "w-full h-full object-cover",
+                            barber.name === 'Leomar' ? "object-[center_20%]" : "object-center"
+                          )}
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
@@ -357,7 +352,7 @@ export default function Booking() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar"
+                className="space-y-4 max-h-[60vh] md:max-h-[500px] overflow-y-auto pr-2 custom-scrollbar"
               >
                 {services.map((service) => (
                   <motion.div
@@ -372,10 +367,16 @@ export default function Booking() {
                     )}
                   >
                     {selectedService === service.id && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold-500"></div>
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold-500 z-20"></div>
                     )}
 
-                    <div className="flex items-center gap-3 md:gap-5">
+                    {/* Background image for service card */}
+                    <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity z-0">
+                      <img src={service.image} alt="" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-navy-900 via-navy-900/60 to-transparent"></div>
+                    </div>
+
+                    <div className="flex items-center gap-3 md:gap-5 relative z-10">
                       <div className={cn(
                         "w-12 h-12 md:w-14 md:h-14 rounded-xl flex items-center justify-center transition-all duration-300 shadow-inner",
                         selectedService === service.id ? "bg-gold-500 text-navy-900" : "bg-navy-800 text-gold-500 group-hover:bg-navy-700"
@@ -389,7 +390,7 @@ export default function Booking() {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right relative z-10">
                       <span className="block font-bold text-white text-base md:text-xl mb-0.5 md:mb-1">{formatCurrency(service.price)}</span>
                       {selectedService === service.id ? (
                         <motion.div

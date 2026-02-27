@@ -136,16 +136,18 @@ export default function Services() {
               <div className="flex flex-col md:flex-row h-full">
                 {/* Image/Icon Section */}
                 <div className="w-full md:w-48 h-48 md:h-auto relative overflow-hidden bg-navy-800 flex items-center justify-center">
-                  <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-700">
+                  <div className="absolute inset-0 opacity-40 group-hover:opacity-60 transition-opacity duration-700">
                     <img 
                       src={service.image || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?q=80&w=800&auto=format&fit=crop'} 
                       alt={service.name}
                       className="w-full h-full object-cover scale-110 group-hover:scale-125 transition-transform duration-1000"
+                      loading="lazy"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src = 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?q=80&w=800&auto=format&fit=crop';
                       }}
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-navy-900 via-transparent to-transparent"></div>
                   </div>
                   <div className="relative z-10 w-16 h-16 rounded-full bg-navy-900/80 border border-gold-500/30 flex items-center justify-center text-gold-500 shadow-2xl group-hover:border-gold-500 group-hover:scale-110 transition-all duration-500">
                     {getServiceIcon(service.id)}
