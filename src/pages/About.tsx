@@ -41,8 +41,24 @@ export default function About() {
             viewport={{ once: true }}
             className="grid grid-cols-2 gap-4"
           >
-            <img src="https://images.unsplash.com/photo-1503951914875-befbb6470523?q=80&w=2068&auto=format&fit=crop" className="rounded-lg shadow-lg mt-8" alt="Barbearia 1" />
-            <img src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=2070&auto=format&fit=crop" className="rounded-lg shadow-lg" alt="Barbearia 2" />
+            <img 
+              src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?q=80&w=800&auto=format&fit=crop" 
+              className="rounded-lg shadow-lg mt-8 w-full h-64 object-cover" 
+              alt="Barbearia Interior" 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://images.unsplash.com/photo-1503951914875-befbb6470523?q=80&w=800&auto=format&fit=crop';
+              }}
+            />
+            <img 
+              src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=800&auto=format&fit=crop" 
+              className="rounded-lg shadow-lg w-full h-64 object-cover" 
+              alt="Equipamentos de Barbearia" 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=800&auto=format&fit=crop';
+              }}
+            />
           </motion.div>
         </div>
       </section>
@@ -110,7 +126,7 @@ export default function About() {
                 </div>
                 <div>
                   <h3 className="text-white font-bold mb-1">Contato</h3>
-                  <p className="text-gray-400">(81) 98133-3889</p>
+                  <p className="text-gray-400">(81) 8436-1210</p>
                   <p className="text-gray-400">contato@imperialbarbearia.com</p>
                 </div>
               </div>

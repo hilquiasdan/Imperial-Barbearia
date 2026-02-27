@@ -214,7 +214,7 @@ export default function Services() {
             Oferecemos consultoria personalizada para eventos, casamentos e grupos. Entre em contato para um orçamento exclusivo.
           </p>
           <a 
-            href="https://wa.me/5581981333889"
+            href="https://wa.me/558184361210"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-10 py-4 border-2 border-gold-500 text-gold-500 hover:bg-gold-500 hover:text-navy-900 transition-all font-bold uppercase tracking-widest text-sm rounded-sm"

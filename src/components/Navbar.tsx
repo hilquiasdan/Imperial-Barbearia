@@ -32,11 +32,11 @@ export default function Navbar() {
   return (
     <nav className={cn(
       "fixed w-full z-50 transition-all duration-500",
-      scrolled ? "bg-navy-900/70 backdrop-blur-md md:backdrop-blur-2xl border-b border-white/10 py-2 shadow-2xl" : "bg-transparent py-4"
+      scrolled ? "bg-navy-900/80 backdrop-blur-sm md:backdrop-blur-2xl border-b border-white/10 py-2 shadow-2xl" : "bg-transparent py-4"
     )}>
       {/* Subtle grain overlay for the navbar when scrolled - Hidden on mobile */}
       {scrolled && (
-        <div className="hidden md:block absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
+        <div className="absolute inset-0 opacity-[0.03] md:opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
       )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="flex items-center justify-between h-16">
@@ -85,6 +85,12 @@ export default function Navbar() {
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center gap-1">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="text-gold-500 hover:text-white transition-colors p-2"
+            >
+              {isOpen ? <X size={28} /> : <Menu size={28} />}
+            </button>
             <Link 
               to="/login" 
               className="text-gray-500/40 hover:text-gold-500 transition-colors p-2"
@@ -92,12 +98,6 @@ export default function Navbar() {
             >
               <Lock size={18} />
             </Link>
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="text-gold-500 hover:text-white transition-colors p-2"
-            >
-              {isOpen ? <X size={28} /> : <Menu size={28} />}
-            </button>
           </div>
         </div>
       </div>

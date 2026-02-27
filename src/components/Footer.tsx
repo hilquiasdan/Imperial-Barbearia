@@ -46,8 +46,8 @@ export default function Footer() {
             <ul className="space-y-4 text-gray-400 text-sm">
               <li className="flex flex-col">
                 <span className="text-xs text-gold-500 uppercase tracking-wide mb-1">Telefone / WhatsApp</span>
-                <a href="https://wa.me/5581981333889" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
-                  (81) 98133-3889
+                <a href="https://wa.me/558184361210" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                  (81) 8436-1210
                 </a>
               </li>
               <li className="flex flex-col">

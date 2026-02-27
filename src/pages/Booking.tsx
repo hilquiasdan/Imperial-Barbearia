@@ -97,10 +97,10 @@ export default function Booking() {
     });
 
     // Send WhatsApp Message
-    const message = `Olá, Imperial Barbearia! 👋\n\nGostaria de confirmar um novo agendamento. Seguem os detalhes:\n\n━━━━━━━━━━━━━━━━━━━━\n👤 *Cliente:* ${customerName}\n📱 *Telefone:* ${customerPhone}\n━━━━━━━━━━━━━━━━━━━━\n✂️ *Serviço:* ${service?.name}\n💰 *Valor:* ${formatCurrency(service?.price || 0)}\n⏱️ *Duração:* ${service?.duration} min\n━━━━━━━━━━━━━━━━━━━━\n💈 *Profissional:* ${barber?.name}\n📅 *Data:* ${format(appointmentDate, "dd/MM/yyyy", { locale: ptBR })}\n⏰ *Horário:* ${format(appointmentDate, "HH:mm", { locale: ptBR })}\n━━━━━━━━━━━━━━━━━━━━\n\nAguardo a confirmação. Obrigado! 👊`;
+    const message = `Olá, Imperial Barbearia! \u{1F44B}\n\nGostaria de confirmar um novo agendamento. Seguem os detalhes:\n\n------------------------------------\n\u{1F464} *Cliente:* ${customerName}\n\u{1F4F1} *Telefone:* ${customerPhone}\n------------------------------------\n\u{2702}\u{FE0F} *Serviço:* ${service?.name}\n\u{1F4B0} *Valor:* ${formatCurrency(service?.price || 0)}\n\u{23F1}\u{FE0F} *Duração:* ${service?.duration} min\n------------------------------------\n\u{1F488} *Profissional:* ${barber?.name}\n\u{1F4C5} *Data:* ${format(appointmentDate, "dd/MM/yyyy", { locale: ptBR })}\n\u{23F0} *Horário:* ${format(appointmentDate, "HH:mm", { locale: ptBR })}\n------------------------------------\n\nAguardo a confirmação. Obrigado! \u{1F44A}`;
     
     // Open WhatsApp in new tab (simulating sending to owner)
-    window.open(`https://wa.me/5581981333889?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/${barber?.phone || '558184361210'}?text=${encodeURIComponent(message)}`, '_blank');
 
     // Reset and show success (or redirect)
     alert('Agendamento realizado com sucesso!');
@@ -254,9 +254,9 @@ export default function Booking() {
           )}
         </div>
 
-        <div className="glass-panel backdrop-blur-md md:backdrop-blur-2xl rounded-2xl md:rounded-3xl border border-white/10 p-4 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-h-[450px] md:min-h-[500px] relative overflow-hidden group">
-          {/* Subtle grain overlay for the panel - Hidden on mobile */}
-          <div className="hidden md:block absolute inset-0 opacity-[0.03] pointer-events-none group-hover:opacity-[0.05] transition-opacity duration-700" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
+        <div className="glass-panel backdrop-blur-sm md:backdrop-blur-2xl rounded-2xl md:rounded-3xl border border-white/10 p-4 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-h-[450px] md:min-h-[500px] relative overflow-hidden group">
+          {/* Subtle grain overlay for the panel - Now visible on mobile */}
+          <div className="absolute inset-0 opacity-[0.02] md:opacity-[0.03] pointer-events-none group-hover:opacity-[0.05] transition-opacity duration-700" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
           
           {/* Decorative corner */}
           <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-bl from-gold-500/20 to-transparent rounded-bl-full pointer-events-none"></div>
@@ -687,7 +687,7 @@ export default function Booking() {
 }
 
 function ClientPortal() {
-  const { appointments, cancelAppointment, getBarberName, getServiceName } = useData();
+  const { appointments, cancelAppointment, getBarberName, getServiceName, barbers } = useData();
   const [phone, setPhone] = useState('');
   const [searchResult, setSearchResult] = useState<Appointment[] | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -708,20 +708,23 @@ function ClientPortal() {
     setHasSearched(true);
   };
 
-  const handleCancel = (id: string, clientName: string, serviceName: string, date: string) => {
+  const handleCancel = (id: string, clientName: string, serviceName: string, date: string, barberId: string) => {
     if (window.confirm('Tem certeza que deseja cancelar este agendamento?')) {
       cancelAppointment(id);
       
       // Update local search result
       setSearchResult(prev => prev ? prev.map(a => a.id === id ? { ...a, status: 'cancelled' } : a) : null);
 
-      // Send WhatsApp notification to owner about client cancellation
+      // Send WhatsApp notification to the specific barber about client cancellation
       const dateObj = new Date(date);
       const dateStr = format(dateObj, "dd/MM/yyyy", { locale: ptBR });
       const timeStr = format(dateObj, "HH:mm", { locale: ptBR });
       
+      const barber = barbers.find(b => b.id === barberId);
+      const barberPhone = barber?.phone || '558184361210';
+      
       const message = `*CANCELAMENTO PELO CLIENTE*\n\nO cliente *${clientName}* cancelou o agendamento de *${serviceName}* marcado para o dia ${dateStr} às ${timeStr}.\n\nO horário já está disponível novamente no sistema.`;
-      window.open(`https://wa.me/5581981333889?text=${encodeURIComponent(message)}`, '_blank');
+      window.open(`https://wa.me/${barberPhone}?text=${encodeURIComponent(message)}`, '_blank');
     }
   };
 
@@ -814,7 +817,7 @@ function ClientPortal() {
                         Confirmado
                       </span>
                       <button
-                        onClick={() => handleCancel(appt.id, appt.clientName, getServiceName(appt.serviceId), appt.date)}
+                        onClick={() => handleCancel(appt.id, appt.clientName, getServiceName(appt.serviceId), appt.date, appt.barberId)}
                         className="text-gray-500 hover:text-red-500 transition-colors p-2"
                         title="Cancelar Agendamento"
                       >

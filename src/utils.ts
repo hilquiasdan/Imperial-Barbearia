@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { LEOMAR_IMAGE, PEDRO_IMAGE } from './assets/barberImages';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -27,11 +28,9 @@ export const SERVICES_DATA = [
   { id: '12', name: 'Massagem Capilar', price: 30, duration: 20, image: 'https://images.unsplash.com/photo-1616394584738-65b431c4290a?q=80&w=800&auto=format&fit=crop' }
 ];
 
-import { LEOMAR_IMAGE, PEDRO_IMAGE } from './assets/barberImages';
-
 export const BARBERS = [
-  { id: '1', name: 'Leomar', image: LEOMAR_IMAGE },
-  { id: '2', name: 'Pedro', image: PEDRO_IMAGE },
+  { id: '1', name: 'Leomar', image: LEOMAR_IMAGE, phone: '558184361210' },
+  { id: '2', name: 'Pedro', image: PEDRO_IMAGE, phone: '558173176920' },
 ];
 
 export const REVIEWS = [

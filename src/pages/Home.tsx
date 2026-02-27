@@ -10,9 +10,9 @@ export default function Home() {
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
         {/* Background with Parallax/Texture */}
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-navy-900/85 z-10"></div>
-          {/* Grain overlay - Hidden on mobile for performance */}
-          <div className="hidden md:block absolute inset-0 z-15 opacity-20 pointer-events-none" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
+          <div className="absolute inset-0 bg-navy-900/75 z-10"></div>
+          {/* Grain overlay - Now visible on mobile with lower opacity */}
+          <div className="absolute inset-0 z-15 opacity-10 md:opacity-20 pointer-events-none" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
           <img 
             src="https://images.unsplash.com/photo-1503951914875-befbb6470523?q=80&w=2068&auto=format&fit=crop" 
             alt="Barbershop Background" 
@@ -68,8 +68,9 @@ export default function Home() {
                 className="w-full h-full rounded-full border-[3px] border-gold-500/40 flex items-center justify-center bg-navy-900/95 backdrop-blur-sm md:backdrop-blur-md shadow-[0_0_60px_rgba(0,0,0,0.6)] group-hover:shadow-[0_0_100px_rgba(197,160,89,0.4)] transition-all duration-1000 relative overflow-hidden z-10"
                 animate={{ 
                   y: [0, -6, 0],
-                  rotateY: window.innerWidth > 768 ? [0, 6, 0, -6, 0] : 0,
-                  rotateX: window.innerWidth > 768 ? [0, -4, 0, 4, 0] : 0
+                  // Only do 3D rotation on desktop for better mobile performance
+                  rotateY: typeof window !== 'undefined' && window.innerWidth > 768 ? [0, 6, 0, -6, 0] : 0,
+                  rotateX: typeof window !== 'undefined' && window.innerWidth > 768 ? [0, -4, 0, 4, 0] : 0
                 }}
                 transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
               >

@@ -46,13 +46,13 @@
   }
 
   .glass-panel {
-    @apply bg-navy-900/80 backdrop-blur-md md:backdrop-blur-xl border border-white/10 shadow-xl relative overflow-hidden;
+    @apply bg-navy-900/90 md:bg-navy-900/80 backdrop-blur-sm md:backdrop-blur-xl border border-white/10 shadow-xl relative overflow-hidden;
     transform: translateZ(0); /* Hardware acceleration */
   }
 
   .glass-panel::before {
     content: "";
-    @apply absolute inset-0 pointer-events-none opacity-20;
+    @apply absolute inset-0 pointer-events-none opacity-10 md:opacity-20;
     background-image: var(--background-image-texture);
   }
   

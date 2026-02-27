@@ -56,7 +56,7 @@ export default function Location() {
                 </div>
                 <div>
                   <h3 className="text-white font-bold text-lg mb-1">Contato</h3>
-                  <p className="text-gray-400">(81) 98133-3889</p>
+                  <p className="text-gray-400">(81) 8436-1210</p>
                   <p className="text-gray-400">hilquiasdaniel.g16@gmail.com</p>
                 </div>
               </div>

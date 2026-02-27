@@ -13,6 +13,7 @@ export interface Barber {
   id: string;
   name: string;
   image: string;
+  phone: string;
 }
 
 export interface Appointment {
