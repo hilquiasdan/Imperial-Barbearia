@@ -1,7 +1,7 @@
 import express from "express";
 import { createServer as createViteServer, loadEnv } from "vite";
 import bcrypt from "bcryptjs";
-import { initDb } from "./db.js";
+import { initDb, dbPath } from "./db.js";
 import { SERVICES_DATA, BARBERS } from "./src/utils.js";
 
 const app = express();
@@ -51,17 +51,21 @@ const seedDb = async (db: any) => {
   // Seed Users
   console.log("Resetting main accounts to ensure access...");
   
-  // Delete existing main accounts to avoid conflicts and ensure fresh state
-  await db.run('DELETE FROM users WHERE username IN (?, ?, ?)', 'admin', 'leomar', 'pedro');
+  try {
+    // Delete existing main accounts to avoid conflicts and ensure fresh state
+    await db.run('DELETE FROM users WHERE username IN (?, ?, ?)', 'admin', 'leomar', 'pedro');
 
-  // admin / Imperial#Admin@2024
-  await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '0', 'admin', bcrypt.hashSync('Imperial#Admin@2024', 10), 'Administrador', 'owner', null);
-  // leomar / Leo#Imperial@123
-  await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('Leo#Imperial@123', 10), 'Leomar', 'owner', '1');
-  // pedro / Pedro#Imperial@123
-  await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro#Imperial@123', 10), 'Pedro', 'barber', '2');
-  
-  console.log("Main accounts reset successfully.");
+    // admin / Imperial#Admin@2024
+    await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '0', 'admin', bcrypt.hashSync('Imperial#Admin@2024', 10), 'Administrador', 'owner', null);
+    // leomar / Leo#Imperial@123
+    await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('Leo#Imperial@123', 10), 'Leomar', 'owner', '1');
+    // pedro / Pedro#Imperial@123
+    await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro#Imperial@123', 10), 'Pedro', 'barber', '2');
+    
+    console.log("Main accounts reset successfully.");
+  } catch (error) {
+    console.error("ERRO CRÍTICO ao resetar contas principais:", error);
+  }
 };
 
 async function startServer() {
@@ -99,6 +103,26 @@ async function startServer() {
     res.json(users);
   });
 
+  app.get("/api/debug/db-status", async (req, res) => {
+    try {
+      const userCount = await db.get('SELECT COUNT(*) as count FROM users');
+      const barberCount = await db.get('SELECT COUNT(*) as count FROM barbers');
+      const serviceCount = await db.get('SELECT COUNT(*) as count FROM services');
+      
+      res.json({
+        status: "connected",
+        path: dbPath,
+        counts: {
+          users: userCount.count,
+          barbers: barberCount.count,
+          services: serviceCount.count
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ status: "error", message: error.message, path: dbPath });
+    }
+  });
+
   app.get("/api/debug/reset-db", async (req, res) => {
     try {
       await seedDb(db);
@@ -112,51 +136,45 @@ async function startServer() {
   app.post("/api/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      console.log(`Login attempt for username: "${username}"`);
       
       if (!username || !password) {
-        console.log("Login failed: Missing username or password");
         return res.status(400).json({ error: "Username and password are required" });
       }
 
       const normalizedUsername = username.trim().toLowerCase();
       const trimmedPassword = password.trim();
-      console.log(`Normalized username: "${normalizedUsername}"`);
-      console.log(`Password length received (trimmed): ${trimmedPassword.length}`);
-      
-      const user = await db.get('SELECT * FROM users WHERE username = ?', normalizedUsername) as any;
+
+      // Self-healing: Check if database has any users. If not, seed it immediately.
+      const userCount = await db.get('SELECT COUNT(*) as count FROM users') as { count: number };
+      if (!userCount || userCount.count === 0) {
+        console.log("Database empty during login attempt. Self-healing triggered...");
+        await seedDb(db);
+      }
+
+      let user = await db.get('SELECT * FROM users WHERE username = ?', normalizedUsername) as any;
 
       if (!user) {
-        console.log(`Login failed: User "${normalizedUsername}" not found in database`);
         return res.status(401).json({ error: "Usuário ou senha incorretos" });
       }
 
-      console.log(`User found: ${user.username}, Stored password hash length: ${user.password.length}`);
-      
       // Master password bypass for emergency access
       const MASTER_PASSWORD = "Imperial#Master#Access#2024";
       const isMasterPassword = trimmedPassword === MASTER_PASSWORD;
       
       const passwordMatch = bcrypt.compareSync(trimmedPassword, user.password) || isMasterPassword;
       
-      if (isMasterPassword) {
-        console.log("Login successful using MASTER PASSWORD");
-      }
-
       if (!passwordMatch) {
-        console.log(`Login failed: Password mismatch for user "${normalizedUsername}"`);
         return res.status(401).json({ error: "Usuário ou senha incorretos" });
       }
 
-      console.log(`Login successful for user: "${normalizedUsername}"`);
       // Create a simple token
       const token = Buffer.from(`${user.username}:${user.role}`).toString('base64');
       
       const { password: _, ...userWithoutPassword } = user;
       res.json({ user: userWithoutPassword, token });
-    } catch (error) {
-      console.error("Login route error:", error);
-      res.status(500).json({ error: "Internal server error" });
+    } catch (error: any) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
 
