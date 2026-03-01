@@ -270,9 +270,12 @@ async function startServer() {
 
   // Stats Route for Admin Panel
   app.get("/api/stats/monthly", authenticate, async (req, res) => {
+    const isMySQL = process.env.DB_HOST && process.env.DB_USER;
+    const dateFunc = isMySQL ? "DATE_FORMAT(date, '%Y-%m')" : "strftime('%Y-%m', date)";
+    
     const stats = await db.all(`
       SELECT 
-        strftime('%Y-%m', date) as month,
+        ${dateFunc} as month,
         COUNT(*) as totalCuts,
         SUM(price) as totalRevenue
       FROM appointments
