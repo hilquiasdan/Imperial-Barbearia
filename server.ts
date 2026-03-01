@@ -49,36 +49,19 @@ const seedDb = async (db: any) => {
   }
 
   // Seed Users
-  const userCount = await db.get('SELECT COUNT(*) as count FROM users') as { count: number };
-  if (userCount.count === 0) {
-    // admin / Imperial#Admin@2024
-    await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '0', 'admin', bcrypt.hashSync('Imperial#Admin@2024', 10), 'Administrador', 'owner', null);
-    // leomar / Leo#Imperial@123
-    await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('Leo#Imperial@123', 10), 'Leomar', 'owner', '1');
-    // pedro / Pedro#Imperial@123
-    await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro#Imperial@123', 10), 'Pedro', 'barber', '2');
-    
-    console.log("Users seeded successfully.");
-  } else {
-    // Garantia extra: verifica se os usuários principais existem, se não, cria.
-    const adminExists = await db.get('SELECT * FROM users WHERE username = ?', 'admin');
-    if (!adminExists) {
-      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '0', 'admin', bcrypt.hashSync('Imperial#Admin@2024', 10), 'Administrador', 'owner', null);
-      console.log("Admin user recreated.");
-    }
+  console.log("Resetting main accounts to ensure access...");
+  
+  // Delete existing main accounts to avoid conflicts and ensure fresh state
+  await db.run('DELETE FROM users WHERE username IN (?, ?, ?)', 'admin', 'leomar', 'pedro');
 
-    const leomarExists = await db.get('SELECT * FROM users WHERE username = ?', 'leomar');
-    if (!leomarExists) {
-      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('Leo#Imperial@123', 10), 'Leomar', 'owner', '1');
-      console.log("Leomar user recreated.");
-    }
-
-    const pedroExists = await db.get('SELECT * FROM users WHERE username = ?', 'pedro');
-    if (!pedroExists) {
-      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro#Imperial@123', 10), 'Pedro', 'barber', '2');
-      console.log("Pedro user recreated.");
-    }
-  }
+  // admin / Imperial#Admin@2024
+  await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '0', 'admin', bcrypt.hashSync('Imperial#Admin@2024', 10), 'Administrador', 'owner', null);
+  // leomar / Leo#Imperial@123
+  await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('Leo#Imperial@123', 10), 'Leomar', 'owner', '1');
+  // pedro / Pedro#Imperial@123
+  await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro#Imperial@123', 10), 'Pedro', 'barber', '2');
+  
+  console.log("Main accounts reset successfully.");
 };
 
 async function startServer() {
@@ -110,20 +93,51 @@ async function startServer() {
     }
   };
 
+  // Debug Route (Remove later)
+  app.get("/api/debug/users", async (req, res) => {
+    const users = await db.all('SELECT id, username, name, role, barberId FROM users');
+    res.json(users);
+  });
+
   // API Routes
   app.post("/api/login", async (req, res) => {
-    const { username, password } = req.body;
-    const user = await db.get('SELECT * FROM users WHERE username = ?', username.trim().toLowerCase()) as any;
+    try {
+      const { username, password } = req.body;
+      console.log(`Login attempt for username: "${username}"`);
+      
+      if (!username || !password) {
+        console.log("Login failed: Missing username or password");
+        return res.status(400).json({ error: "Username and password are required" });
+      }
 
-    if (!user || !bcrypt.compareSync(password, user.password)) {
-      return res.status(401).json({ error: "Usuário ou senha incorretos" });
+      const normalizedUsername = username.trim().toLowerCase();
+      console.log(`Normalized username: "${normalizedUsername}"`);
+      console.log(`Password length received: ${password.length}`);
+      
+      const user = await db.get('SELECT * FROM users WHERE username = ?', normalizedUsername) as any;
+
+      if (!user) {
+        console.log(`Login failed: User "${normalizedUsername}" not found in database`);
+        return res.status(401).json({ error: "Usuário ou senha incorretos" });
+      }
+
+      console.log(`User found: ${user.username}, Stored password hash length: ${user.password.length}`);
+      const passwordMatch = bcrypt.compareSync(password, user.password);
+      if (!passwordMatch) {
+        console.log(`Login failed: Password mismatch for user "${normalizedUsername}"`);
+        return res.status(401).json({ error: "Usuário ou senha incorretos" });
+      }
+
+      console.log(`Login successful for user: "${normalizedUsername}"`);
+      // Create a simple token
+      const token = Buffer.from(`${user.username}:${user.role}`).toString('base64');
+      
+      const { password: _, ...userWithoutPassword } = user;
+      res.json({ user: userWithoutPassword, token });
+    } catch (error) {
+      console.error("Login route error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
-
-    // Create a simple token
-    const token = Buffer.from(`${user.username}:${user.role}`).toString('base64');
-    
-    const { password: _, ...userWithoutPassword } = user;
-    res.json({ user: userWithoutPassword, token });
   });
 
   app.get("/api/barbers", async (req, res) => {
