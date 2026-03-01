@@ -8,8 +8,20 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const handleReset = async () => {
+    try {
+      const response = await fetch('/api/debug/reset-db');
+      const data = await response.json();
+      setResetMessage(data.message || data.error);
+      setTimeout(() => setResetMessage(''), 3000);
+    } catch (e) {
+      setResetMessage('Erro ao resetar banco');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,6 +102,23 @@ export default function Login() {
           >
             Entrar no Painel
           </motion.button>
+
+          {window.location.search.includes('debug=true') && (
+            <div className="pt-4 border-t border-white/5">
+              <button 
+                type="button"
+                onClick={handleReset}
+                className="w-full text-xs text-gray-500 hover:text-white transition-colors uppercase tracking-widest"
+              >
+                Resetar Banco de Dados
+              </button>
+              {resetMessage && (
+                <p className="text-[10px] text-gold-500 text-center mt-2 animate-pulse">
+                  {resetMessage}
+                </p>
+              )}
+            </div>
+          )}
         </form>
       </div>
     </div>
