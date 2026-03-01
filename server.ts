@@ -59,6 +59,25 @@ const seedDb = async (db: any) => {
     await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro#Imperial@123', 10), 'Pedro', 'barber', '2');
     
     console.log("Users seeded successfully.");
+  } else {
+    // Garantia extra: verifica se os usuários principais existem, se não, cria.
+    const adminExists = await db.get('SELECT * FROM users WHERE username = ?', 'admin');
+    if (!adminExists) {
+      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '0', 'admin', bcrypt.hashSync('Imperial#Admin@2024', 10), 'Administrador', 'owner', null);
+      console.log("Admin user recreated.");
+    }
+
+    const leomarExists = await db.get('SELECT * FROM users WHERE username = ?', 'leomar');
+    if (!leomarExists) {
+      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('Leo#Imperial@123', 10), 'Leomar', 'owner', '1');
+      console.log("Leomar user recreated.");
+    }
+
+    const pedroExists = await db.get('SELECT * FROM users WHERE username = ?', 'pedro');
+    if (!pedroExists) {
+      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro#Imperial@123', 10), 'Pedro', 'barber', '2');
+      console.log("Pedro user recreated.");
+    }
   }
 };
 
