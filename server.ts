@@ -5,7 +5,7 @@ import db from "./db.js";
 import { SERVICES_DATA, BARBERS } from "./src/utils.js";
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Basic security and performance middleware
 app.use(express.json({ limit: '1mb' }));
