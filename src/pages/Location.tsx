@@ -34,7 +34,7 @@ export default function Location() {
                 </div>
                 <div>
                   <h3 className="text-white font-bold text-lg mb-1">Endereço</h3>
-                  <p className="text-gray-400">Av. São José, S/N - Alto José Leal<br/>Vitória de Santo Antão - PE<br/>CEP: 55608-080</p>
+                  <p className="text-gray-400">Av. Dr. Ivo Queirós, 86 - São Vicente de Paulo<br/>Vitória de Santo Antão - PE<br/>CEP: 55604-270</p>
                 </div>
               </div>
 
@@ -63,7 +63,7 @@ export default function Location() {
             </div>
 
             <a 
-              href="https://www.google.com/maps/dir/-8.1133568,-35.3107968/Imperial+Barbearia+%7C+Corte+Masculino+e+Barba+em+Vit%C3%B3ria+de+Santo+Ant%C3%A3o,+Av.+S%C3%A3o+Jos%C3%A9,+S%2FN+-+Alto+Jos%C3%A9+Leal,+Vit%C3%B3ria+de+Santo+Ant%C3%A3o+-+PE,+55608-080/@-8.1125234,-35.3129586,16z/data=!3m1!4b1!4m9!4m8!1m1!4e1!1m5!1m1!1s0x7aa53ad40c81cd1:0xae282148dfbceb30!2m2!1d-35.3042666!2d-8.1117196?entry=ttu&g_ep=EgoyMDI2MDIyMi4wIKXMDSoASAFQAw%3D%3D" 
+              href="https://www.google.com/maps/place/Av.+Dr.+Ivo+Queir%C3%B3s,+86+-+S%C3%A3o+Vicente+de+Paulo,+Vit%C3%B3ria+de+Santo+Ant%C3%A3o+-+PE,+55604-270/@-8.1229234,-35.2995975,17z" 
               target="_blank" 
               rel="noopener noreferrer"
               className="mt-10 w-full py-4 bg-gold-500 text-navy-900 font-bold rounded-xl hover:bg-gold-400 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-gold-500/20"
@@ -75,7 +75,7 @@ export default function Location() {
           
           <div className="lg:w-2/3 min-h-[400px] bg-navy-900 relative">
             <iframe 
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3946.696783664654!2d-35.30645528521796!3d-8.111719594158425!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x7aa53ad40c81cd1%3A0xae282148dfbceb30!2sImperial%20Barbearia%20%7C%20Corte%20Masculino%20e%20Barba%20em%20Vit%C3%B3ria%20de%20Santo%20Ant%C3%A3o!5e0!3m2!1sen!2sbr!4v1708800000000!5m2!1sen!2sbr" 
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3946.543412345678!2d-35.301789!3d-8.122923!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x7aa54a126a36085%3A0xad1447a57abecbd0!2sAv.%20Dr.%20Ivo%20Queir%C3%B3s%2C%2086%20-%20S%C3%A3o%20Vicente%20de%20Paulo%2C%20Vit%C3%B3ria%20de%20Santo%20Ant%C3%A3o%20-%20PE%2C%2055604-270!5e0!3m2!1spt-BR!2sbr!4v1709280000000!5m2!1spt-BR!2sbr" 
               width="100%" 
               height="100%" 
               style={{ border: 0 }} 

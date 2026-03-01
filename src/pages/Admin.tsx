@@ -4,19 +4,28 @@ import { useData, Appointment, Service, Barber } from '../context/DataContext';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '../utils';
 import { 
-  LogOut, Calendar, Users, Settings, BarChart2, Menu, X, Bell, 
-  Trash2, Edit, Plus, Download, DollarSign, Scissors, TrendingUp, UserCheck, Clock
+  LogOut, Calendar as CalendarIcon, Users, Settings, BarChart2, Menu, X, Bell, 
+  Trash2, Edit, Plus, Download, DollarSign, Scissors, TrendingUp, UserCheck, Clock, History,
+  ChevronLeft, ChevronRight, Filter, List
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell 
 } from 'recharts';
+import { 
+  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, 
+  eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths,
+  isToday, parseISO
+} from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '../utils';
 
 export default function Admin() {
   const { logout, user } = useAuth();
   const { 
     appointments, services, barbers, 
-    cancelAppointment, addService, updateService, deleteService,
+    cancelAppointment, deleteAppointment, deleteAppointmentsByMonth,
+    addService, updateService, deleteService,
     addBarber, updateBarber, deleteBarber,
     getBarberName, getServiceName 
   } = useData();
@@ -31,6 +40,12 @@ export default function Admin() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [chartPeriod, setChartPeriod] = useState<'day' | 'week' | 'month'>('week');
+  const [selectedHistoryMonth, setSelectedHistoryMonth] = useState(new Date().toISOString().slice(0, 7));
+  
+  // Calendar & Filter States
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
+  const [selectedBarberFilter, setSelectedBarberFilter] = useState<string>('all');
+  const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
 
   // --- Dashboard Logic ---
   const dashboardMetrics = useMemo(() => {
@@ -64,6 +79,19 @@ export default function Admin() {
       .filter(a => a.status !== 'cancelled')
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+    // If period is month, pre-fill all months of the current year
+    if (chartPeriod === 'month') {
+      const currentYear = new Date().getFullYear();
+      for (let i = 1; i <= 12; i++) {
+        const date = new Date(currentYear, i - 1);
+        const key = date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+        groupedData[key] = { date: key };
+        barbers.forEach(b => {
+          groupedData[key][b.name.toLowerCase()] = 0;
+        });
+      }
+    }
+
     sortedApps.forEach(app => {
       const appDate = new Date(app.date);
       let key = '';
@@ -94,7 +122,22 @@ export default function Admin() {
       }
     });
 
-    return Object.values(groupedData).slice(-7); // Show last 7 periods
+    const result = Object.values(groupedData);
+    
+    // Sort by date if it's month view to ensure Jan-Dec order
+    if (chartPeriod === 'month') {
+      return result.sort((a, b) => {
+        const [mA, yA] = a.date.split(' de ');
+        const [mB, yB] = b.date.split(' de ');
+        const months = ['jan.', 'fev.', 'mar.', 'abr.', 'mai.', 'jun.', 'jul.', 'ago.', 'set.', 'out.', 'nov.', 'dez.'];
+        const yearA = parseInt(yA);
+        const yearB = parseInt(yB);
+        if (yearA !== yearB) return yearA - yearB;
+        return months.indexOf(mA) - months.indexOf(mB);
+      });
+    }
+    
+    return result.slice(-7);
   }, [filteredAppointments, chartPeriod, getBarberName, barbers]);
 
   const pieData = useMemo(() => {
@@ -141,11 +184,72 @@ export default function Admin() {
   };
 
   // --- Appointments Logic ---
-  const activeAppointmentsList = useMemo(() => {
+  const filteredAppointmentsList = useMemo(() => {
+    let list = filteredAppointments.filter(a => a.status !== 'cancelled');
+    
+    if (selectedBarberFilter !== 'all') {
+      list = list.filter(a => a.barberId === selectedBarberFilter);
+    }
+    
+    return list.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [filteredAppointments, selectedBarberFilter]);
+
+  const calendarDays = useMemo(() => {
+    const start = startOfWeek(startOfMonth(currentCalendarDate), { weekStartsOn: 0 });
+    const end = endOfWeek(endOfMonth(currentCalendarDate), { weekStartsOn: 0 });
+    return eachDayOfInterval({ start, end });
+  }, [currentCalendarDate]);
+
+  const appointmentsByDay = useMemo(() => {
+    const map: Record<string, Appointment[]> = {};
+    filteredAppointmentsList.forEach(app => {
+      const dayKey = format(new Date(app.date), 'yyyy-MM-dd');
+      if (!map[dayKey]) map[dayKey] = [];
+      map[dayKey].push(app);
+    });
+    return map;
+  }, [filteredAppointmentsList]);
+
+  const historyAppointments = useMemo(() => {
     return filteredAppointments
-      .filter(a => a.status !== 'cancelled')
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      .filter(app => {
+        const appMonth = new Date(app.date).toISOString().slice(0, 7);
+        return appMonth === selectedHistoryMonth;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [filteredAppointments, selectedHistoryMonth]);
+
+  const availableMonths = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const months = new Set<string>();
+    
+    // Add all months of current year
+    for (let i = 1; i <= 12; i++) {
+      months.add(`${currentYear}-${i.toString().padStart(2, '0')}`);
+    }
+    
+    // Also add months from appointments (in case they are from other years)
+    filteredAppointments.forEach(app => {
+      months.add(new Date(app.date).toISOString().slice(0, 7));
+    });
+    
+    return Array.from(months).sort().reverse();
   }, [filteredAppointments]);
+
+  const handleDeleteMonth = async () => {
+    const [year, m] = selectedHistoryMonth.split('-');
+    const date = new Date(Number(year), Number(m) - 1);
+    const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    
+    if (window.confirm(`Tem certeza que deseja excluir TODOS os agendamentos de ${label}? Esta ação não pode ser desfeita.`)) {
+      const success = await deleteAppointmentsByMonth(selectedHistoryMonth);
+      if (success) {
+        alert(`Agendamentos de ${label} excluídos com sucesso.`);
+      } else {
+        alert('Erro ao excluir agendamentos.');
+      }
+    }
+  };
 
   const handleCancel = (e: React.MouseEvent, app: Appointment) => {
     e.preventDefault();
@@ -240,7 +344,8 @@ export default function Admin() {
 
   const menuItems = useMemo(() => {
     const items = [
-      { id: 'appointments', label: 'Agenda', icon: Calendar },
+      { id: 'appointments', label: 'Agenda', icon: CalendarIcon },
+      { id: 'history', label: 'Histórico', icon: History },
     ];
     
     if (user?.role === 'owner') {
@@ -518,52 +623,275 @@ export default function Admin() {
 
           {/* APPOINTMENTS TAB */}
           {activeTab === 'appointments' && (
-            <div className="space-y-6 max-w-5xl mx-auto">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div className="space-y-6 max-w-6xl mx-auto">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-white">Agenda de Atendimentos</h2>
                   <p className="text-gray-400 text-sm">Gerencie os horários marcados</p>
                 </div>
+
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                  {/* Barber Filter */}
+                  {user?.role === 'owner' && (
+                    <div className="relative flex-1 md:flex-none">
+                      <select
+                        value={selectedBarberFilter}
+                        onChange={(e) => setSelectedBarberFilter(e.target.value)}
+                        className="w-full bg-[#1e293b] text-white pl-10 pr-4 py-2 rounded-xl border border-white/10 outline-none focus:border-gold-500 transition-all appearance-none text-sm font-medium"
+                      >
+                        <option value="all">Todos os Barbeiros</option>
+                        {barbers.map(b => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    </div>
+                  )}
+
+                  {/* View Toggle */}
+                  <div className="flex bg-[#1e293b] p-1 rounded-xl border border-white/5">
+                    <button
+                      onClick={() => setViewMode('calendar')}
+                      className={cn(
+                        "p-2 rounded-lg transition-all flex items-center gap-2 text-sm font-medium",
+                        viewMode === 'calendar' ? "bg-gold-500 text-navy-900" : "text-gray-400 hover:text-white"
+                      )}
+                    >
+                      <CalendarIcon size={18} />
+                      <span className="hidden sm:inline">Calendário</span>
+                    </button>
+                    <button
+                      onClick={() => setViewMode('list')}
+                      className={cn(
+                        "p-2 rounded-lg transition-all flex items-center gap-2 text-sm font-medium",
+                        viewMode === 'list' ? "bg-gold-500 text-navy-900" : "text-gray-400 hover:text-white"
+                      )}
+                    >
+                      <List size={18} />
+                      <span className="hidden sm:inline">Lista</span>
+                    </button>
+                  </div>
+                </div>
               </div>
-              
+
+              {viewMode === 'calendar' ? (
+                <div className="bg-[#1e293b]/50 backdrop-blur-sm rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
+                  {/* Calendar Header */}
+                  <div className="p-6 border-b border-white/5 flex items-center justify-between bg-[#1e293b]/30">
+                    <h3 className="text-xl font-bold text-white capitalize">
+                      {format(currentCalendarDate, 'MMMM yyyy', { locale: ptBR })}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setCurrentCalendarDate(subMonths(currentCalendarDate, 1))}
+                        className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors border border-white/5"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <button 
+                        onClick={() => setCurrentCalendarDate(new Date())}
+                        className="px-4 py-2 hover:bg-white/5 rounded-lg text-xs font-bold text-gold-500 transition-colors border border-gold-500/20"
+                      >
+                        Hoje
+                      </button>
+                      <button 
+                        onClick={() => setCurrentCalendarDate(addMonths(currentCalendarDate, 1))}
+                        className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors border border-white/5"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Calendar Grid */}
+                  <div className="grid grid-cols-7 border-b border-white/5">
+                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+                      <div key={day} className="py-3 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 bg-[#0f172a]/30">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-7">
+                    {calendarDays.map((day, i) => {
+                      const dayKey = format(day, 'yyyy-MM-dd');
+                      const dayAppointments = appointmentsByDay[dayKey] || [];
+                      const isCurrentMonth = isSameMonth(day, currentCalendarDate);
+                      const isTodayDate = isToday(day);
+
+                      return (
+                        <div 
+                          key={day.toString()} 
+                          className={cn(
+                            "min-h-[120px] p-2 border-r border-b border-white/5 transition-colors relative group",
+                            !isCurrentMonth ? "bg-[#0f172a]/20 opacity-30" : "hover:bg-white/[0.02]",
+                            i % 7 === 6 && "border-r-0"
+                          )}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <span className={cn(
+                              "text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full transition-all",
+                              isTodayDate ? "bg-gold-500 text-navy-900 shadow-lg shadow-gold-500/20" : "text-gray-400 group-hover:text-white"
+                            )}>
+                              {format(day, 'd')}
+                            </span>
+                            {dayAppointments.length > 0 && (
+                              <span className="text-[10px] font-black bg-gold-500/10 text-gold-500 px-1.5 py-0.5 rounded border border-gold-500/20">
+                                {dayAppointments.length}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="space-y-1 max-h-[80px] overflow-y-auto custom-scrollbar pr-1">
+                            {dayAppointments.slice(0, 3).map(app => (
+                              <div 
+                                key={app.id}
+                                className="text-[10px] p-1.5 rounded-lg bg-[#0f172a] border border-white/5 hover:border-gold-500/30 transition-all cursor-pointer truncate group/item"
+                                title={`${app.clientName} - ${getServiceName(app.serviceId)}`}
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-gold-500"></div>
+                                  <span className="font-bold text-white truncate">{format(new Date(app.date), 'HH:mm')}</span>
+                                  <span className="text-gray-400 truncate">{app.clientName.split(' ')[0]}</span>
+                                </div>
+                              </div>
+                            ))}
+                            {dayAppointments.length > 3 && (
+                              <div className="text-[9px] text-center text-gray-500 font-bold py-1">
+                                + {dayAppointments.length - 3} mais
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-[#1e293b]/50 backdrop-blur-sm rounded-2xl border border-white/5 overflow-hidden shadow-xl">
+                  <div className="divide-y divide-white/5">
+                    {filteredAppointmentsList.length > 0 ? (
+                      filteredAppointmentsList.map((app) => (
+                        <div key={app.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-colors group">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-[#0f172a] flex items-center justify-center text-gold-500 font-bold border border-white/10 shadow-inner">
+                              {app.clientName.charAt(0)}
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-white text-lg">{app.clientName}</h3>
+                              <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
+                                <span className="bg-white/5 px-2 py-0.5 rounded text-xs border border-white/5">{getServiceName(app.serviceId)}</span>
+                                <span>•</span>
+                                <span className="text-gold-500">{getBarberName(app.barberId)}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
+                                <CalendarIcon size={12} />
+                                {new Date(app.date).toLocaleDateString()}
+                                <Clock size={12} className="ml-2" />
+                                {new Date(app.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              </div>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={(e) => handleCancel(e, app)}
+                            className="bg-red-500/10 text-red-400 p-4 rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 sm:w-auto w-full group-hover:shadow-lg group-hover:shadow-red-500/20 border border-transparent hover:border-red-400/50 cursor-pointer z-10"
+                          >
+                            <Trash2 size={20} />
+                            <span className="sm:hidden font-bold">Cancelar Agendamento</span>
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-12 text-center flex flex-col items-center justify-center text-gray-500">
+                        <CalendarIcon size={48} className="mb-4 opacity-20" />
+                        <p className="text-lg">Nenhum agendamento encontrado.</p>
+                        <p className="text-sm opacity-60">Novos agendamentos aparecerão aqui.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* HISTORY TAB */}
+          {activeTab === 'history' && (
+            <div className="space-y-6 max-w-5xl mx-auto">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Histórico de Agendamentos</h2>
+                  <p className="text-gray-400 text-sm">Consulte atendimentos passados por mês</p>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3 bg-[#1e293b] p-1 rounded-xl border border-white/5">
+                    <select 
+                      value={selectedHistoryMonth}
+                      onChange={(e) => setSelectedHistoryMonth(e.target.value)}
+                      className="bg-transparent text-white px-4 py-2 outline-none cursor-pointer font-medium text-sm"
+                    >
+                      {availableMonths.map(month => {
+                        const [year, m] = month.split('-');
+                        const date = new Date(Number(year), Number(m) - 1);
+                        const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                        return <option key={month} value={month} className="bg-[#1e293b]">{label.charAt(0).toUpperCase() + label.slice(1)}</option>;
+                      })}
+                    </select>
+                  </div>
+                  <button 
+                    onClick={handleDeleteMonth}
+                    className="p-3 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-white/5 hover:border-red-400/50"
+                    title="Excluir todos os registros deste mês"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+
               <div className="bg-[#1e293b]/50 backdrop-blur-sm rounded-2xl border border-white/5 overflow-hidden shadow-xl">
                 <div className="divide-y divide-white/5">
-                  {activeAppointmentsList.length > 0 ? (
-                    activeAppointmentsList.map((app) => (
+                  {historyAppointments.length > 0 ? (
+                    historyAppointments.map((app) => (
                       <div key={app.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-colors group">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-[#0f172a] flex items-center justify-center text-gold-500 font-bold border border-white/10 shadow-inner">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold border border-white/10 shadow-inner ${app.status === 'cancelled' ? 'bg-red-500/10 text-red-500' : 'bg-[#0f172a] text-gold-500'}`}>
                             {app.clientName.charAt(0)}
                           </div>
                           <div>
-                            <h3 className="font-bold text-white text-lg">{app.clientName}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-white text-lg">{app.clientName}</h3>
+                              {app.status === 'cancelled' && (
+                                <span className="bg-red-500/10 text-red-500 text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-red-500/20">Cancelado</span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
                               <span className="bg-white/5 px-2 py-0.5 rounded text-xs border border-white/5">{getServiceName(app.serviceId)}</span>
                               <span>•</span>
                               <span className="text-gold-500">{getBarberName(app.barberId)}</span>
                             </div>
                             <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
-                              <Calendar size={12} />
+                              <CalendarIcon size={12} />
                               {new Date(app.date).toLocaleDateString()}
                               <Clock size={12} className="ml-2" />
                               {new Date(app.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              <span className="ml-2 text-gold-500/80 font-medium">{formatCurrency(app.price)}</span>
                             </div>
                           </div>
                         </div>
                         <button 
-                          onClick={(e) => handleCancel(e, app)}
-                          className="bg-red-500/10 text-red-400 p-4 rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 sm:w-auto w-full group-hover:shadow-lg group-hover:shadow-red-500/20 border border-transparent hover:border-red-400/50 cursor-pointer z-10"
+                          onClick={() => { if(window.confirm('Excluir este registro do histórico?')) deleteAppointment(app.id); }}
+                          className="p-3 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-white/5 hover:border-red-400/50"
+                          title="Excluir registro"
                         >
-                          <Trash2 size={20} />
-                          <span className="sm:hidden font-bold">Cancelar Agendamento</span>
+                          <Trash2 size={18} />
                         </button>
                       </div>
                     ))
                   ) : (
                     <div className="p-12 text-center flex flex-col items-center justify-center text-gray-500">
-                      <Calendar size={48} className="mb-4 opacity-20" />
-                      <p className="text-lg">Nenhum agendamento encontrado.</p>
-                      <p className="text-sm opacity-60">Novos agendamentos aparecerão aqui.</p>
+                      <History size={48} className="mb-4 opacity-20" />
+                      <p className="text-lg">Nenhum registro para este mês.</p>
+                      <p className="text-sm opacity-60">Selecione outro período acima.</p>
                     </div>
                   )}
                 </div>
@@ -614,6 +942,53 @@ export default function Admin() {
                   </tbody>
                 </table>
               </div>
+
+              {pieData.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-[#1e293b]/50 backdrop-blur-sm p-6 rounded-2xl border border-white/5 shadow-xl">
+                    <h3 className="text-lg font-bold text-white mb-6">Faturamento por Barbeiro</h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={pieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {pieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                            itemStyle={{ color: '#fff' }}
+                            formatter={(value: number) => formatCurrency(value)}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#1e293b]/50 backdrop-blur-sm p-6 rounded-2xl border border-white/5 shadow-xl">
+                    <h3 className="text-lg font-bold text-white mb-6">Legenda</h3>
+                    <div className="space-y-4">
+                      {pieData.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                            <span className="text-gray-300">{item.name}</span>
+                          </div>
+                          <span className="font-bold text-white">{formatCurrency(item.value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -637,7 +1012,7 @@ export default function Admin() {
                       <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gold-500/30">
                         <img src={barber.image} alt={barber.name} className="w-full h-full object-cover" />
                       </div>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-2 transition-opacity">
                         <button 
                           onClick={() => { setEditingBarber(barber); setIsBarberModalOpen(true); }}
                           className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-colors"
@@ -683,7 +1058,7 @@ export default function Admin() {
                       <div className="w-10 h-10 rounded-lg bg-[#0f172a] flex items-center justify-center text-gold-500 border border-white/10">
                         <Scissors size={20} />
                       </div>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-2 transition-opacity">
                         <button 
                           onClick={() => { setEditingService(service); setIsServiceModalOpen(true); }}
                           className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-colors"

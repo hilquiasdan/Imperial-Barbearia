@@ -12,7 +12,8 @@ export interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  login: (username: string, password: string) => boolean;
+  token: string | null;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -21,91 +22,57 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const storedAuth = localStorage.getItem('isAdminAuthenticated');
     const storedUser = localStorage.getItem('authUser');
-    if (storedAuth === 'true' && storedUser) {
+    const storedToken = localStorage.getItem('authToken');
+    if (storedAuth === 'true' && storedUser && storedToken) {
       setIsAuthenticated(true);
       setUser(JSON.parse(storedUser));
+      setToken(storedToken);
     }
   }, []);
 
-  const login = (username: string, password: string) => {
-    const cleanUsername = username.trim().toLowerCase();
-    const cleanPassword = password.trim();
+  const login = async (username: string, password: string) => {
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
 
-    let loggedUser: User | null = null;
-
-    // Obfuscated credentials (Base64) to "hide" them from casual source inspection
-    // Decodes to: admin/admin, leomar/leomar123, pedro/pedro123
-    const _c = {
-      a: ['YWRtaW4=', 'YWRtaW4='],
-      l: ['bGVvbWFy', 'bGVvbWFyMTIz'],
-      p: ['cGVkcm8=', 'cGVkcm8xMjM=']
-    };
-
-    const decode = (s: string) => atob(s);
-
-    const ADMIN_USER = import.meta.env.VITE_ADMIN_USER || decode(_c.a[0]);
-    const ADMIN_PASS = import.meta.env.VITE_ADMIN_PASS || decode(_c.a[1]);
-    const LEOMAR_USER = import.meta.env.VITE_LEOMAR_USER || decode(_c.l[0]);
-    const LEOMAR_PASS = import.meta.env.VITE_LEOMAR_PASS || decode(_c.l[1]);
-    const PEDRO_USER = import.meta.env.VITE_PEDRO_USER || decode(_c.p[0]);
-    const PEDRO_PASS = import.meta.env.VITE_PEDRO_PASS || decode(_c.p[1]);
-
-    // Leomar - Owner
-    if (cleanUsername === LEOMAR_USER && cleanPassword === LEOMAR_PASS) {
-      loggedUser = {
-        id: '1',
-        username: LEOMAR_USER,
-        name: 'Leomar',
-        role: 'owner',
-        barberId: '1'
-      };
-    } 
-    // Pedro - Barber
-    else if (cleanUsername === PEDRO_USER && cleanPassword === PEDRO_PASS) {
-      loggedUser = {
-        id: '2',
-        username: PEDRO_USER,
-        name: 'Pedro',
-        role: 'barber',
-        barberId: '2'
-      };
+      if (response.ok) {
+        const data = await response.json();
+        setIsAuthenticated(true);
+        setUser(data.user);
+        setToken(data.token);
+        localStorage.setItem('isAdminAuthenticated', 'true');
+        localStorage.setItem('authUser', JSON.stringify(data.user));
+        localStorage.setItem('authToken', data.token);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Login error:", error);
+      return false;
     }
-    // Legacy admin support
-    else if (cleanUsername === ADMIN_USER && cleanPassword === ADMIN_PASS) {
-      loggedUser = {
-        id: '0',
-        username: ADMIN_USER,
-        name: 'Administrador',
-        role: 'owner'
-      };
-    }
-
-    if (loggedUser) {
-      setIsAuthenticated(true);
-      setUser(loggedUser);
-      localStorage.setItem('isAdminAuthenticated', 'true');
-      localStorage.setItem('authUser', JSON.stringify(loggedUser));
-      return true;
-    }
-
-    return false;
   };
 
   const logout = () => {
     setIsAuthenticated(false);
     setUser(null);
+    setToken(null);
     localStorage.removeItem('isAdminAuthenticated');
     localStorage.removeItem('authUser');
+    localStorage.removeItem('authToken');
     navigate('/');
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

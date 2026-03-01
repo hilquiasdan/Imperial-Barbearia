@@ -58,7 +58,7 @@ export default function Footer() {
               </li>
               <li className="flex flex-col">
                 <span className="text-xs text-gold-500 uppercase tracking-wide mb-1">Endereço</span>
-                <span>Av. São José, S/N - Alto José Leal<br/>Vitória de Santo Antão - PE</span>
+                <span>Av. Dr. Ivo Queirós, 86 - São Vicente de Paulo<br/>Vitória de Santo Antão - PE</span>
               </li>
             </ul>
           </div>

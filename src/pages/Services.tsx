@@ -42,8 +42,8 @@ export default function Services() {
             transition={{ duration: 0.8 }}
           >
             <h3 className="text-gold-500 text-[10px] md:text-sm uppercase tracking-[0.3em] md:tracking-[0.4em] mb-3 md:mb-4 font-bold">Menu de Experiências</h3>
-            <h1 className="text-4xl md:text-7xl font-serif text-white mb-4 md:mb-6 tracking-tight">
-              Nossos <span className="text-gold-gradient">Serviços</span>
+            <h1 className="text-4xl md:text-7xl font-serif text-white mb-4 md:mb-6 tracking-tight flex flex-wrap justify-center items-center gap-x-4">
+              Nossos <span className="bg-gold-gradient text-navy-900 px-4 py-1 rounded-sm shadow-2xl transform -skew-x-6">Serviços</span>
             </h1>
             <div className="w-16 md:w-24 h-1 bg-gradient-to-r from-transparent via-gold-500 to-transparent mx-auto mb-6 md:mb-8"></div>
             <p className="text-gray-400 max-w-2xl mx-auto text-base md:text-lg leading-relaxed italic px-2">
@@ -93,7 +93,7 @@ export default function Services() {
                     </div>
                     <div>
                       <span className="text-gray-500 text-[10px] uppercase tracking-widest block mb-1">Investimento</span>
-                      <span className="text-gold-500 text-2xl md:text-3xl font-bold font-serif">{formatCurrency(80)}</span>
+                      <span className="text-gold-500 text-2xl md:text-3xl font-bold font-serif">{formatCurrency(services.find(s => s.id === '3')?.price || 50)}</span>
                     </div>
                   </div>
                   <Link 
@@ -180,7 +180,7 @@ export default function Services() {
                     </div>
                     
                     <p className="text-gray-400 text-xs md:text-sm mb-5 leading-relaxed">
-                      Tratamento completo com técnicas avançadas, lavagem relaxante e finalização personalizada.
+                      {service.description || 'Tratamento completo com técnicas avançadas, lavagem relaxante e finalização personalizada.'}
                     </p>
 
                     <div className="flex flex-wrap gap-2 mb-6">

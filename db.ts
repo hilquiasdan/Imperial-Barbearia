@@ -25,7 +25,8 @@ db.exec(`
     name TEXT NOT NULL,
     price REAL NOT NULL,
     duration INTEGER NOT NULL,
-    image TEXT
+    image TEXT,
+    description TEXT
   );
 
   CREATE TABLE IF NOT EXISTS appointments (
@@ -38,6 +39,16 @@ db.exec(`
     status TEXT DEFAULT 'confirmed',
     price REAL NOT NULL,
     FOREIGN KEY (serviceId) REFERENCES services(id),
+    FOREIGN KEY (barberId) REFERENCES barbers(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL,
+    barberId TEXT,
     FOREIGN KEY (barberId) REFERENCES barbers(id)
   );
 `);

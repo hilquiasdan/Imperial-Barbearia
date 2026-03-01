@@ -690,42 +690,55 @@ export default function Booking() {
 function ClientPortal() {
   const { appointments, cancelAppointment, getBarberName, getServiceName, barbers } = useData();
   const [phone, setPhone] = useState('');
-  const [searchResult, setSearchResult] = useState<Appointment[] | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
+  const cleanPhone = phone.replace(/\D/g, '');
+  
+  const searchResult = useMemo(() => {
+    if (!hasSearched || cleanPhone.length < 10) return null;
+    return appointments.filter(a => {
+      const aPhone = a.clientPhone.replace(/\D/g, '');
+      return aPhone === cleanPhone;
+    });
+  }, [appointments, hasSearched, cleanPhone]);
+
   const handleSearch = () => {
-    const cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.length < 10) {
       alert('Por favor, digite um número de telefone válido.');
       return;
     }
-
-    const found = appointments.filter(a => {
-      const aPhone = a.clientPhone.replace(/\D/g, '');
-      return aPhone === cleanPhone;
-    });
-
-    setSearchResult(found);
     setHasSearched(true);
   };
 
-  const handleCancel = (id: string, clientName: string, serviceName: string, date: string, barberId: string) => {
-    if (window.confirm('Tem certeza que deseja cancelar este agendamento?')) {
-      cancelAppointment(id);
+  const handleCancel = async (id: string, clientName: string, serviceName: string, date: string, barberId: string) => {
+    // Removed confirm dialog as per user request for immediate action
+    try {
+      // 1. Update system first and wait for confirmation
+      const success = await cancelAppointment(id);
       
-      // Update local search result
-      setSearchResult(prev => prev ? prev.map(a => a.id === id ? { ...a, status: 'cancelled' } : a) : null);
+      if (success) {
+        // 2. Prepare WhatsApp message
+        const dateObj = new Date(date);
+        const dateStr = format(dateObj, "dd/MM/yyyy", { locale: ptBR });
+        const timeStr = format(dateObj, "HH:mm", { locale: ptBR });
+        
+        const barber = barbers.find(b => b.id === barberId);
+        const barberPhone = barber?.phone || '558184361210';
+        
+        const message = `*SOLICITAÇÃO DE CANCELAMENTO*\n\nOlá, gostaria de cancelar meu agendamento:\n\n*Cliente:* ${clientName}\n*Serviço:* ${serviceName}\n*Data:* ${dateStr}\n*Hora:* ${timeStr}\n\nO horário já foi liberado no sistema.`;
+        const whatsappUrl = `https://wa.me/${barberPhone}?text=${encodeURIComponent(message)}`;
 
-      // Send WhatsApp notification to the specific barber about client cancellation
-      const dateObj = new Date(date);
-      const dateStr = format(dateObj, "dd/MM/yyyy", { locale: ptBR });
-      const timeStr = format(dateObj, "HH:mm", { locale: ptBR });
-      
-      const barber = barbers.find(b => b.id === barberId);
-      const barberPhone = barber?.phone || '558184361210';
-      
-      const message = `*CANCELAMENTO PELO CLIENTE*\n\nO cliente *${clientName}* cancelou o agendamento de *${serviceName}* marcado para o dia ${dateStr} às ${timeStr}.\n\nO horário já está disponível novamente no sistema.`;
-      window.open(`https://wa.me/${barberPhone}?text=${encodeURIComponent(message)}`, '_blank');
+        // 3. Open WhatsApp
+        const win = window.open(whatsappUrl, '_blank');
+        if (!win) {
+          window.location.href = whatsappUrl;
+        }
+      } else {
+        alert('Não foi possível cancelar o agendamento. Por favor, tente novamente.');
+      }
+    } catch (error) {
+      console.error("Error cancelling:", error);
+      alert('Ocorreu um erro ao processar o cancelamento.');
     }
   };
 
@@ -819,10 +832,9 @@ function ClientPortal() {
                       </span>
                       <button
                         onClick={() => handleCancel(appt.id, appt.clientName, getServiceName(appt.serviceId), appt.date, appt.barberId)}
-                        className="text-gray-500 hover:text-red-500 transition-colors p-2"
-                        title="Cancelar Agendamento"
+                        className="text-red-500 hover:text-red-400 transition-colors text-xs font-bold uppercase tracking-wider border border-red-500/30 px-3 py-1.5 rounded-lg hover:bg-red-500/10"
                       >
-                        <Trash2 size={20} />
+                        Cancelar Agendamento
                       </button>
                     </>
                   )}

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SERVICES_DATA as INITIAL_SERVICES, BARBERS as INITIAL_BARBERS } from '../utils';
+import { useAuth } from './AuthContext';
 
 export interface Service {
   id: string;
@@ -7,6 +8,7 @@ export interface Service {
   price: number;
   duration: number;
   image: string;
+  description?: string;
 }
 
 export interface Barber {
@@ -39,7 +41,9 @@ interface DataContextType {
   updateBarber: (id: string, barber: Partial<Barber>) => Promise<void>;
   deleteBarber: (id: string) => Promise<void>;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'status'>) => Promise<void>;
-  cancelAppointment: (id: string) => Promise<void>;
+  cancelAppointment: (id: string) => Promise<boolean>;
+  deleteAppointment: (id: string) => Promise<boolean>;
+  deleteAppointmentsByMonth: (month: string) => Promise<boolean>;
   getBarberName: (id: string) => string;
   getServiceName: (id: string) => string;
 }
@@ -48,6 +52,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
+  const { token, isAuthenticated } = useAuth();
   const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
   const [barbers, setBarbers] = useState<Barber[]>(INITIAL_BARBERS);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -57,15 +62,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [servicesRes, barbersRes, appointmentsRes] = await Promise.all([
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const [servicesRes, barbersRes] = await Promise.all([
           fetch('/api/services'),
-          fetch('/api/barbers'),
-          fetch('/api/appointments')
+          fetch('/api/barbers')
         ]);
 
         if (servicesRes.ok) setServices(await servicesRes.json());
         if (barbersRes.ok) setBarbers(await barbersRes.json());
-        if (appointmentsRes.ok) setAppointments(await appointmentsRes.json());
+
+        // Only fetch appointments if authenticated
+        if (isAuthenticated && token) {
+          const appointmentsRes = await fetch('/api/appointments', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (appointmentsRes.ok) setAppointments(await appointmentsRes.json());
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -74,18 +90,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchData();
-  }, []);
+  }, [token, isAuthenticated]);
 
   const addService = async (service: Omit<Service, 'id'>) => {
     const newService = { ...service, id: Date.now().toString() };
     try {
       const response = await fetch('/api/services', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(newService)
       });
       if (response.ok) {
-        setServices([...services, newService]);
+        setServices(prev => [...prev, newService]);
       }
     } catch (error) {
       console.error("Error adding service:", error);
@@ -99,11 +118,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch(`/api/services/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(merged)
       });
       if (response.ok) {
-        setServices(services.map(s => s.id === id ? merged : s));
+        setServices(prev => prev.map(s => s.id === id ? merged : s));
       }
     } catch (error) {
       console.error("Error updating service:", error);
@@ -113,10 +135,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const deleteService = async (id: string) => {
     try {
       const response = await fetch(`/api/services/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
-        setServices(services.filter(s => s.id !== id));
+        setServices(prev => prev.filter(s => s.id !== id));
       }
     } catch (error) {
       console.error("Error deleting service:", error);
@@ -128,11 +151,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch('/api/barbers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(newBarber)
       });
       if (response.ok) {
-        setBarbers([...barbers, newBarber]);
+        setBarbers(prev => [...prev, newBarber]);
       }
     } catch (error) {
       console.error("Error adding barber:", error);
@@ -146,11 +172,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch(`/api/barbers/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(merged)
       });
       if (response.ok) {
-        setBarbers(barbers.map(b => b.id === id ? merged : b));
+        setBarbers(prev => prev.map(b => b.id === id ? merged : b));
       }
     } catch (error) {
       console.error("Error updating barber:", error);
@@ -160,10 +189,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const deleteBarber = async (id: string) => {
     try {
       const response = await fetch(`/api/barbers/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
-        setBarbers(barbers.filter(b => b.id !== id));
+        setBarbers(prev => prev.filter(b => b.id !== id));
       }
     } catch (error) {
       console.error("Error deleting barber:", error);
@@ -185,7 +215,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (response.ok) {
-        setAppointments([newAppointment, ...appointments]);
+        setAppointments(prev => [newAppointment, ...prev]);
       }
     } catch (error) {
       console.error("Error saving appointment:", error);
@@ -194,19 +224,70 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const cancelAppointment = async (id: string) => {
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`/api/appointments/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ status: 'cancelled' })
       });
 
       if (response.ok) {
-        setAppointments(appointments.map(a => 
+        setAppointments(prev => prev.map(a => 
           a.id === id ? { ...a, status: 'cancelled' } : a
         ));
+        return true;
+      } else {
+        const errorData = await response.json();
+        console.error("Server error cancelling appointment:", errorData);
+        return false;
       }
     } catch (error) {
-      console.error("Error cancelling appointment:", error);
+      console.error("Network error cancelling appointment:", error);
+      return false;
+    }
+  };
+
+  const deleteAppointment = async (id: string) => {
+    try {
+      const response = await fetch(`/api/appointments/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setAppointments(prev => prev.filter(a => a.id !== id));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error deleting appointment:", error);
+      return false;
+    }
+  };
+
+  const deleteAppointmentsByMonth = async (month: string) => {
+    try {
+      const response = await fetch(`/api/appointments/month/${month}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setAppointments(prev => prev.filter(a => 
+          !new Date(a.date).toISOString().startsWith(month)
+        ));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error deleting appointments by month:", error);
+      return false;
     }
   };
 
@@ -227,6 +308,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       deleteBarber,
       addAppointment,
       cancelAppointment,
+      deleteAppointment,
+      deleteAppointmentsByMonth,
       getBarberName,
       getServiceName
     }}>

@@ -79,10 +79,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <DataProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <DataProvider>
         <AppContent />
-      </AuthProvider>
-    </DataProvider>
+      </DataProvider>
+    </AuthProvider>
   );
 }
