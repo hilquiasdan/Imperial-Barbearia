@@ -15,47 +15,63 @@ export interface DB {
 
 // MySQL Wrapper
 class MySQLWrapper implements DB {
-  constructor(private connection: mysql.Connection) {}
+  constructor(private pool: mysql.Pool) {}
 
   async get(sql: string, ...params: any[]) {
+    let connection;
     try {
-      const [rows]: any = await this.connection.execute(sql, params);
+      connection = await this.pool.getConnection();
+      const [rows]: any = await connection.execute(sql, params);
       return rows[0];
-    } catch (error) {
-      console.error(`MySQL GET Error [${sql}]:`, error);
+    } catch (error: any) {
+      console.error(`MySQL GET Error [${sql}]:`, error.message);
       throw error;
+    } finally {
+      if (connection) connection.release();
     }
   }
 
   async all(sql: string, ...params: any[]) {
+    let connection;
     try {
-      const [rows]: any = await this.connection.execute(sql, params);
+      connection = await this.pool.getConnection();
+      const [rows]: any = await connection.execute(sql, params);
       return rows;
-    } catch (error) {
-      console.error(`MySQL ALL Error [${sql}]:`, error);
+    } catch (error: any) {
+      console.error(`MySQL ALL Error [${sql}]:`, error.message);
       throw error;
+    } finally {
+      if (connection) connection.release();
     }
   }
 
   async run(sql: string, ...params: any[]) {
+    let connection;
     try {
-      const [result]: any = await this.connection.execute(sql, params);
+      connection = await this.pool.getConnection();
+      const [result]: any = await connection.execute(sql, params);
       return { lastID: result.insertId, changes: result.affectedRows };
-    } catch (error) {
-      console.error(`MySQL RUN Error [${sql}]:`, error);
+    } catch (error: any) {
+      console.error(`MySQL RUN Error [${sql}]:`, error.message);
       throw error;
+    } finally {
+      if (connection) connection.release();
     }
   }
 
   async exec(sql: string) {
+    let connection;
     try {
+      connection = await this.pool.getConnection();
       const statements = sql.split(';').filter(s => s.trim());
       for (const s of statements) {
-        await this.connection.query(s);
+        await connection.query(s);
       }
-    } catch (error) {
-      console.error(`MySQL EXEC Error:`, error);
+    } catch (error: any) {
+      console.error(`MySQL EXEC Error:`, error.message);
       throw error;
+    } finally {
+      if (connection) connection.release();
     }
   }
 }

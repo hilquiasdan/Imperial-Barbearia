@@ -57,14 +57,23 @@ const seedDb = async (db: any) => {
     }
 
     // Seed Users
-    const userCount = await db.get('SELECT COUNT(*) as count FROM users') as { count: number };
-    console.log(`- Usuários encontrados: ${userCount?.count || 0}`);
-    if (userCount && userCount.count === 0) {
-      console.log("Inserindo usuários administradores...");
+    const adminUser = await db.get('SELECT * FROM users WHERE username = ?', 'admin');
+    if (!adminUser) {
+      console.log("Inserindo usuário administrador padrão...");
       // admin / Imperial#Admin@2024
       await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '0', 'admin', bcrypt.hashSync('Imperial#Admin@2024', 10), 'Administrador', 'owner', null);
+    }
+
+    const leomarUser = await db.get('SELECT * FROM users WHERE username = ?', 'leomar');
+    if (!leomarUser) {
+      console.log("Inserindo usuário Leomar...");
       // leomar / Leo#Imperial@123
       await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('Leo#Imperial@123', 10), 'Leomar', 'owner', '1');
+    }
+
+    const pedroUser = await db.get('SELECT * FROM users WHERE username = ?', 'pedro');
+    if (!pedroUser) {
+      console.log("Inserindo usuário Pedro...");
       // pedro / Pedro#Imperial@123
       await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro#Imperial@123', 10), 'Pedro', 'barber', '2');
     }
@@ -309,18 +318,39 @@ async function startServer() {
       const result1 = await db.get("SELECT 1 as val");
       const result2 = await db.get("SELECT DATABASE() AS db, CURRENT_USER() AS user");
       
+      // Check table counts
+      const barbers = await db.get("SELECT COUNT(*) as count FROM barbers");
+      const services = await db.get("SELECT COUNT(*) as count FROM services");
+      const users = await db.get("SELECT COUNT(*) as count FROM users");
+      const appointments = await db.get("SELECT COUNT(*) as count FROM appointments");
+
       const health = {
         status: "ok",
         test: result1.val === 1 ? "success" : "failed",
         database: result2.db,
         user: result2.user,
-        type: process.env.DB_HOST && process.env.DB_USER ? 'MySQL' : 'SQLite'
+        type: process.env.DB_HOST && process.env.DB_USER ? 'MySQL' : 'SQLite',
+        counts: {
+          barbers: barbers.count,
+          services: services.count,
+          users: users.count,
+          appointments: appointments.count
+        }
       };
       
       console.log("Saúde do banco de dados:", health);
       res.json(health);
     } catch (error: any) {
       console.error("Erro na saúde do banco de dados:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/debug/users", async (req, res) => {
+    try {
+      const users = await db.all('SELECT id, username, name, role, barberId FROM users');
+      res.json(users);
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
