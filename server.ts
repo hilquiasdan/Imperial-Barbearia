@@ -28,6 +28,7 @@ const seedDb = async (db: any) => {
     }
 
     const barberCount = await db.get('SELECT COUNT(*) as count FROM barbers') as { count: number };
+    console.log(`- Barbeiros encontrados: ${barberCount?.count || 0}`);
     if (barberCount && barberCount.count === 0) {
       console.log("Inserindo barbeiros iniciais...");
       for (const b of BARBERS) {
@@ -36,6 +37,7 @@ const seedDb = async (db: any) => {
     }
 
     const serviceCount = await db.get('SELECT COUNT(*) as count FROM services') as { count: number };
+    console.log(`- Serviços encontrados: ${serviceCount?.count || 0}`);
     if (serviceCount && serviceCount.count === 0) {
       console.log("Inserindo serviços iniciais...");
       for (const s of SERVICES_DATA) {
@@ -56,6 +58,7 @@ const seedDb = async (db: any) => {
 
     // Seed Users
     const userCount = await db.get('SELECT COUNT(*) as count FROM users') as { count: number };
+    console.log(`- Usuários encontrados: ${userCount?.count || 0}`);
     if (userCount && userCount.count === 0) {
       console.log("Inserindo usuários administradores...");
       // admin / Imperial#Admin@2024
@@ -124,51 +127,99 @@ async function startServer() {
   });
 
   app.get("/api/barbers", async (req, res) => {
-    const barbers = await db.all('SELECT * FROM barbers');
-    res.json(barbers);
+    try {
+      const barbers = await db.all('SELECT * FROM barbers');
+      res.json(barbers);
+    } catch (error) {
+      console.error("Erro ao buscar barbeiros:", error);
+      res.status(500).json({ error: "Erro ao buscar barbeiros" });
+    }
   });
 
   app.post("/api/barbers", authenticate, async (req, res) => {
-    const { id, name, image, phone } = req.body;
-    await db.run('INSERT INTO barbers (id, name, image, phone) VALUES (?, ?, ?, ?)', id, name, image, phone);
-    res.status(201).json({ id });
+    try {
+      const { id, name, image, phone } = req.body;
+      console.log(`Inserindo barbeiro: ${name} (${id})`);
+      await db.run('INSERT INTO barbers (id, name, image, phone) VALUES (?, ?, ?, ?)', id, name, image, phone);
+      console.log(`Barbeiro ${id} inserido com sucesso.`);
+      res.status(201).json({ id });
+    } catch (error: any) {
+      console.error("Erro ao inserir barbeiro:", error);
+      res.status(500).json({ error: error.message || "Erro ao inserir barbeiro" });
+    }
   });
 
   app.patch("/api/barbers/:id", authenticate, async (req, res) => {
-    const { id } = req.params;
-    const { name, image, phone } = req.body;
-    await db.run('UPDATE barbers SET name = ?, image = ?, phone = ? WHERE id = ?', name, image, phone, id);
-    res.json({ success: true });
+    try {
+      const { id } = req.params;
+      const { name, image, phone } = req.body;
+      console.log(`Atualizando barbeiro: ${id}`);
+      await db.run('UPDATE barbers SET name = ?, image = ?, phone = ? WHERE id = ?', name, image, phone, id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Erro ao atualizar barbeiro:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.delete("/api/barbers/:id", authenticate, async (req, res) => {
-    const { id } = req.params;
-    await db.run('DELETE FROM barbers WHERE id = ?', id);
-    res.json({ success: true });
+    try {
+      const { id } = req.params;
+      console.log(`Deletando barbeiro: ${id}`);
+      await db.run('DELETE FROM barbers WHERE id = ?', id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Erro ao deletar barbeiro:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.get("/api/services", async (req, res) => {
-    const services = await db.all('SELECT * FROM services');
-    res.json(services);
+    try {
+      const services = await db.all('SELECT * FROM services');
+      res.json(services);
+    } catch (error) {
+      console.error("Erro ao buscar serviços:", error);
+      res.status(500).json({ error: "Erro ao buscar serviços" });
+    }
   });
 
   app.post("/api/services", authenticate, async (req, res) => {
-    const { id, name, price, duration, image, description } = req.body;
-    await db.run('INSERT INTO services (id, name, price, duration, image, description) VALUES (?, ?, ?, ?, ?, ?)', id, name, price, duration, image, description || '');
-    res.status(201).json({ id });
+    try {
+      const { id, name, price, duration, image, description } = req.body;
+      console.log(`Inserindo serviço: ${name} (${id})`);
+      await db.run('INSERT INTO services (id, name, price, duration, image, description) VALUES (?, ?, ?, ?, ?, ?)', id, name, price, duration, image, description || '');
+      console.log(`Serviço ${id} inserido com sucesso.`);
+      res.status(201).json({ id });
+    } catch (error: any) {
+      console.error("Erro ao inserir serviço:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.patch("/api/services/:id", authenticate, async (req, res) => {
-    const { id } = req.params;
-    const { name, price, duration, image, description } = req.body;
-    await db.run('UPDATE services SET name = ?, price = ?, duration = ?, image = ?, description = ? WHERE id = ?', name, price, duration, image, description || '', id);
-    res.json({ success: true });
+    try {
+      const { id } = req.params;
+      const { name, price, duration, image, description } = req.body;
+      console.log(`Atualizando serviço: ${id}`);
+      await db.run('UPDATE services SET name = ?, price = ?, duration = ?, image = ?, description = ? WHERE id = ?', name, price, duration, image, description || '', id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Erro ao atualizar serviço:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.delete("/api/services/:id", authenticate, async (req, res) => {
-    const { id } = req.params;
-    await db.run('DELETE FROM services WHERE id = ?', id);
-    res.json({ success: true });
+    try {
+      const { id } = req.params;
+      console.log(`Deletando serviço: ${id}`);
+      await db.run('DELETE FROM services WHERE id = ?', id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Erro ao deletar serviço:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.get("/api/appointments", authenticate, async (req, res) => {
@@ -177,9 +228,15 @@ async function startServer() {
   });
 
   app.post("/api/appointments", async (req, res) => {
-    const { id, clientName, clientPhone, serviceId, barberId, date, status, price } = req.body;
-    await db.run('INSERT INTO appointments (id, clientName, clientPhone, serviceId, barberId, date, status, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', id, clientName, clientPhone, serviceId, barberId, date, status, price);
-    res.status(201).json({ id });
+    try {
+      const { id, clientName, clientPhone, serviceId, barberId, date, status, price } = req.body;
+      console.log(`Recebendo agendamento: ${clientName} para ${date}`);
+      await db.run('INSERT INTO appointments (id, clientName, clientPhone, serviceId, barberId, date, status, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', id, clientName, clientPhone, serviceId, barberId, date, status, price);
+      res.status(201).json({ id });
+    } catch (error: any) {
+      console.error("Erro ao salvar agendamento:", error);
+      res.status(500).json({ error: error.message || "Erro ao salvar agendamento" });
+    }
   });
 
   app.patch("/api/appointments/:id", async (req, res, next) => {
@@ -191,23 +248,41 @@ async function startServer() {
     // Otherwise, require authentication
     await authenticate(req, res, next);
   }, async (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body;
-    await db.run('UPDATE appointments SET status = ? WHERE id = ?', status, id);
-    res.json({ success: true });
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      console.log(`Atualizando status do agendamento ${id} para ${status}`);
+      await db.run('UPDATE appointments SET status = ? WHERE id = ?', status, id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Erro ao atualizar agendamento:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.delete("/api/appointments/:id", authenticate, async (req, res) => {
-    const { id } = req.params;
-    await db.run('DELETE FROM appointments WHERE id = ?', id);
-    res.json({ success: true });
+    try {
+      const { id } = req.params;
+      console.log(`Deletando agendamento: ${id}`);
+      await db.run('DELETE FROM appointments WHERE id = ?', id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Erro ao deletar agendamento:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.delete("/api/appointments/month/:month", authenticate, async (req, res) => {
-    const { month } = req.params;
-    // month is in YYYY-MM format
-    await db.run("DELETE FROM appointments WHERE date LIKE ?", `${month}%`);
-    res.json({ success: true });
+    try {
+      const { month } = req.params;
+      console.log(`Deletando agendamentos do mês: ${month}`);
+      // month is in YYYY-MM format
+      await db.run("DELETE FROM appointments WHERE date LIKE ?", `${month}%`);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Erro ao deletar agendamentos por mês:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Stats Route for Admin Panel
@@ -228,8 +303,54 @@ async function startServer() {
     res.json(stats);
   });
 
+  app.get("/api/health/db", async (req, res) => {
+    try {
+      console.log("Verificando saúde do banco de dados...");
+      const result1 = await db.get("SELECT 1 as val");
+      const result2 = await db.get("SELECT DATABASE() AS db, CURRENT_USER() AS user");
+      
+      const health = {
+        status: "ok",
+        test: result1.val === 1 ? "success" : "failed",
+        database: result2.db,
+        user: result2.user,
+        type: process.env.DB_HOST && process.env.DB_USER ? 'MySQL' : 'SQLite'
+      };
+      
+      console.log("Saúde do banco de dados:", health);
+      res.json(health);
+    } catch (error: any) {
+      console.error("Erro na saúde do banco de dados:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+    res.json({ 
+      status: "ok", 
+      dbType: process.env.DB_HOST && process.env.DB_USER ? 'MySQL' : 'SQLite',
+      env: process.env.NODE_ENV || 'development'
+    });
+  });
+
+  app.get("/api/debug/reset-db", async (req, res) => {
+    try {
+      console.log("Solicitação de reset de banco de dados recebida...");
+      
+      // Clear tables
+      await db.exec("DELETE FROM appointments");
+      await db.exec("DELETE FROM users");
+      await db.exec("DELETE FROM services");
+      await db.exec("DELETE FROM barbers");
+      
+      // Re-seed
+      await seedDb(db);
+      
+      res.json({ message: "Banco de dados resetado e semeado com sucesso!" });
+    } catch (error: any) {
+      console.error("Erro ao resetar banco:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   if (process.env.NODE_ENV !== "production") {

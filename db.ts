@@ -18,27 +18,44 @@ class MySQLWrapper implements DB {
   constructor(private connection: mysql.Connection) {}
 
   async get(sql: string, ...params: any[]) {
-    // MySQL uses ? for placeholders, same as SQLite
-    const [rows]: any = await this.connection.execute(sql, params);
-    return rows[0];
+    try {
+      const [rows]: any = await this.connection.execute(sql, params);
+      return rows[0];
+    } catch (error) {
+      console.error(`MySQL GET Error [${sql}]:`, error);
+      throw error;
+    }
   }
 
   async all(sql: string, ...params: any[]) {
-    const [rows]: any = await this.connection.execute(sql, params);
-    return rows;
+    try {
+      const [rows]: any = await this.connection.execute(sql, params);
+      return rows;
+    } catch (error) {
+      console.error(`MySQL ALL Error [${sql}]:`, error);
+      throw error;
+    }
   }
 
   async run(sql: string, ...params: any[]) {
-    const [result]: any = await this.connection.execute(sql, params);
-    return { lastID: result.insertId, changes: result.affectedRows };
+    try {
+      const [result]: any = await this.connection.execute(sql, params);
+      return { lastID: result.insertId, changes: result.affectedRows };
+    } catch (error) {
+      console.error(`MySQL RUN Error [${sql}]:`, error);
+      throw error;
+    }
   }
 
   async exec(sql: string) {
-    // MySQL doesn't support PRAGMA, but that's handled in initDb
-    // We split multiple statements if needed, though mysql2 supports it if configured
-    const statements = sql.split(';').filter(s => s.trim());
-    for (const s of statements) {
-      await this.connection.execute(s);
+    try {
+      const statements = sql.split(';').filter(s => s.trim());
+      for (const s of statements) {
+        await this.connection.query(s);
+      }
+    } catch (error) {
+      console.error(`MySQL EXEC Error:`, error);
+      throw error;
     }
   }
 }
@@ -50,19 +67,27 @@ export const initDb = async (): Promise<DB> => {
                    process.env.DB_NAME;
 
   if (useMySQL) {
-    console.log(`Tentando conectar ao banco de dados MySQL (Hostinger: ${process.env.DB_HOST})...`);
+    console.log(`Tentando conectar ao banco de dados MySQL:`);
+    console.log(`- Host: ${process.env.DB_HOST}`);
+    console.log(`- Port: ${process.env.DB_PORT || 3306}`);
+    console.log(`- User: ${process.env.DB_USER}`);
+    console.log(`- Database: ${process.env.DB_NAME}`);
+    
     try {
-      const connection = await mysql.createConnection({
+      const pool = mysql.createPool({
         host: process.env.DB_HOST,
         port: Number(process.env.DB_PORT) || 3306,
         user: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME,
-        connectTimeout: 5000 // 5 seconds timeout for faster feedback
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
+        connectTimeout: 10000
       });
 
-      console.log("Conectado ao MySQL com sucesso!");
-      const db = new MySQLWrapper(connection);
+      console.log("Pool de conexões MySQL criado com sucesso!");
+      const db = new MySQLWrapper(pool as any);
 
       // Initialize tables (MySQL syntax)
       await db.exec(`
