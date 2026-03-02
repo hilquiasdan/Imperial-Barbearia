@@ -232,7 +232,7 @@ async function startServer() {
   });
 
   app.get("/api/appointments", authenticate, async (req, res) => {
-    const appointments = await db.all('SELECT * FROM appointments ORDER BY date DESC');
+    const appointments = await db.all('SELECT * FROM appointments ORDER BY `date` DESC');
     res.json(appointments);
   });
 
@@ -240,7 +240,7 @@ async function startServer() {
     try {
       const { id, clientName, clientPhone, serviceId, barberId, date, status, price } = req.body;
       console.log(`Recebendo agendamento: ${clientName} para ${date}`);
-      await db.run('INSERT INTO appointments (id, clientName, clientPhone, serviceId, barberId, date, status, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', id, clientName, clientPhone, serviceId, barberId, date, status, price);
+      await db.run('INSERT INTO appointments (id, clientName, clientPhone, serviceId, barberId, `date`, status, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', id, clientName, clientPhone, serviceId, barberId, date, status, price);
       res.status(201).json({ id });
     } catch (error) {
       console.error("Erro ao salvar agendamento:", error);
@@ -286,7 +286,7 @@ async function startServer() {
       const { month } = req.params;
       console.log(`Deletando agendamentos do mês: ${month}`);
       // month is in YYYY-MM format
-      await db.run("DELETE FROM appointments WHERE date LIKE ?", `${month}%`);
+      await db.run("DELETE FROM appointments WHERE `date` LIKE ?", `${month}%`);
       res.json({ success: true });
     } catch (error) {
       console.error("Erro ao deletar agendamentos por mês:", error);
@@ -297,7 +297,7 @@ async function startServer() {
   // Stats Route for Admin Panel
   app.get("/api/stats/monthly", authenticate, async (req, res) => {
     const isMySQL = process.env.DB_HOST && process.env.DB_USER;
-    const dateFunc = isMySQL ? "DATE_FORMAT(date, '%Y-%m')" : "strftime('%Y-%m', date)";
+    const dateFunc = isMySQL ? "DATE_FORMAT(`date`, '%Y-%m')" : "strftime('%Y-%m', `date`)";
     
     const stats = await db.all(`
       SELECT 

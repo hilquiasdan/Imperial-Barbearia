@@ -5,13 +5,11 @@ import path from 'path';
 
 export const dbPath = path.resolve(process.cwd(), 'imperial.db');
 
-// Unified Database Interface
-export interface DB {
-  get: (sql: string, ...params: any[]) => Promise<any>;
-  all: (sql: string, ...params: any[]) => Promise<any[]>;
-  run: (sql: string, ...params: any[]) => Promise<{ lastID?: any; changes?: number }>;
-  exec: (sql: string) => Promise<void>;
-}
+// Unified Database Interface (Documentation only)
+// get: (sql, ...params) => Promise<any>
+// all: (sql, ...params) => Promise<any[]>
+// run: (sql, ...params) => Promise<{ lastID, changes }>
+// exec: (sql) => Promise<void>
 
 // MySQL Wrapper
 class MySQLWrapper {
@@ -102,11 +100,16 @@ export const initDb = async () => {
         waitForConnections: true,
         connectionLimit: 10,
         queueLimit: 0,
-        connectTimeout: 10000
+        connectTimeout: 10000,
+        charset: 'utf8mb4'
       });
 
       console.log("Pool de conexões MySQL criado com sucesso!");
       const db = new MySQLWrapper(pool);
+      
+      // Test the connection immediately
+      await pool.query('SELECT 1');
+      console.log("Conexão com MySQL verificada com sucesso!");
 
       // Initialize tables (MySQL syntax)
       await db.exec(`
@@ -132,7 +135,7 @@ export const initDb = async () => {
           clientPhone VARCHAR(50) NOT NULL,
           serviceId VARCHAR(255) NOT NULL,
           barberId VARCHAR(255) NOT NULL,
-          date VARCHAR(255) NOT NULL,
+          `date` VARCHAR(255) NOT NULL,
           status VARCHAR(50) DEFAULT 'confirmed',
           price DECIMAL(10, 2) NOT NULL,
           CONSTRAINT fk_service FOREIGN KEY (serviceId) REFERENCES services(id),
@@ -210,7 +213,7 @@ export const initDb = async () => {
       clientPhone TEXT NOT NULL,
       serviceId TEXT NOT NULL,
       barberId TEXT NOT NULL,
-      date TEXT NOT NULL,
+      `date` TEXT NOT NULL,
       status TEXT DEFAULT 'confirmed',
       price REAL NOT NULL,
       FOREIGN KEY (serviceId) REFERENCES services(id),
