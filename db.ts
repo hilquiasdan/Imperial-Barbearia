@@ -47,8 +47,7 @@ export const initDb = async (): Promise<DB> => {
   // Check if MySQL environment variables are present and not just placeholders
   const useMySQL = process.env.DB_HOST && 
                    process.env.DB_USER && 
-                   process.env.DB_HOST !== 'localhost' && 
-                   process.env.DB_HOST !== '127.0.0.1';
+                   process.env.DB_NAME;
 
   if (useMySQL) {
     console.log(`Tentando conectar ao banco de dados MySQL (Hostinger: ${process.env.DB_HOST})...`);

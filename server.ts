@@ -73,7 +73,7 @@ const seedDb = async (db: any) => {
 };
 
 async function startServer() {
-  console.log("Iniciando servidor...");
+  console.log(`Iniciando servidor em modo: ${process.env.NODE_ENV || 'development'}...`);
   const db = await initDb();
   await seedDb(db);
 
