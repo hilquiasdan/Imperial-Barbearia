@@ -44,11 +44,14 @@ class MySQLWrapper implements DB {
 }
 
 export const initDb = async (): Promise<DB> => {
-  // Check if MySQL environment variables are present
-  const useMySQL = process.env.DB_HOST && process.env.DB_USER;
+  // Check if MySQL environment variables are present and not just placeholders
+  const useMySQL = process.env.DB_HOST && 
+                   process.env.DB_USER && 
+                   process.env.DB_HOST !== 'localhost' && 
+                   process.env.DB_HOST !== '127.0.0.1';
 
   if (useMySQL) {
-    console.log("Tentando conectar ao banco de dados MySQL (Hostinger)...");
+    console.log(`Tentando conectar ao banco de dados MySQL (Hostinger: ${process.env.DB_HOST})...`);
     try {
       const connection = await mysql.createConnection({
         host: process.env.DB_HOST,
@@ -113,10 +116,31 @@ export const initDb = async (): Promise<DB> => {
 
   // Fallback to SQLite
   console.log(`Iniciando banco de dados SQLite local em: ${dbPath}`);
-  const db = await open({
-    filename: dbPath,
-    driver: sqlite3.Database
-  });
+  
+  let db;
+  try {
+    db = await open({
+      filename: dbPath,
+      driver: sqlite3.Database
+    });
+  } catch (error: any) {
+    if (error.message.includes('SQLITE_CORRUPT')) {
+      console.error("Banco de dados SQLite corrompido detectado. Tentando recriar...");
+      const fs = await import('fs/promises');
+      try {
+        await fs.unlink(dbPath);
+        db = await open({
+          filename: dbPath,
+          driver: sqlite3.Database
+        });
+      } catch (unlinkError) {
+        console.error("Falha ao recriar banco de dados SQLite:", unlinkError);
+        throw error;
+      }
+    } else {
+      throw error;
+    }
+  }
 
   await db.run('PRAGMA foreign_keys = ON');
 

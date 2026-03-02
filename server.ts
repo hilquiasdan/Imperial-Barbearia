@@ -250,4 +250,16 @@ async function startServer() {
   });
 }
 
-startServer();
+// Global error handlers to prevent crash on unhandled rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception thrown:', err);
+});
+
+startServer().catch(err => {
+  console.error("FALHA CRÍTICA NA INICIALIZAÇÃO DO SERVIDOR:", err);
+  process.exit(1);
+});
