@@ -2,11 +2,6 @@ import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import mysql from 'mysql2/promise';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export const dbPath = path.resolve(process.cwd(), 'imperial.db');
 
@@ -23,6 +18,7 @@ class MySQLWrapper implements DB {
   constructor(private connection: mysql.Connection) {}
 
   async get(sql: string, ...params: any[]) {
+    // MySQL uses ? for placeholders, same as SQLite
     const [rows]: any = await this.connection.execute(sql, params);
     return rows[0];
   }
@@ -38,30 +34,21 @@ class MySQLWrapper implements DB {
   }
 
   async exec(sql: string) {
-    try {
-      await this.connection.query(sql);
-    } catch (error) {
-      // If multipleStatements is not working as expected, fallback to splitting
-      const statements = sql.split(';').filter(s => s.trim());
-      for (const s of statements) {
-        try {
-          await this.connection.execute(s);
-        } catch (innerError) {
-          console.error("Erro ao executar statement individual:", s, innerError);
-        }
-      }
+    // MySQL doesn't support PRAGMA, but that's handled in initDb
+    // We split multiple statements if needed, though mysql2 supports it if configured
+    const statements = sql.split(';').filter(s => s.trim());
+    for (const s of statements) {
+      await this.connection.execute(s);
     }
   }
 }
 
-// SQLite Wrapper (already provided by 'sqlite' package, but we'll wrap to match if needed)
-// Actually, the 'sqlite' package already has get, all, run, exec.
-
 export const initDb = async (): Promise<DB> => {
+  // Check if MySQL environment variables are present
   const useMySQL = process.env.DB_HOST && process.env.DB_USER;
 
   if (useMySQL) {
-    console.log("Conectando ao banco de dados MySQL...");
+    console.log("Tentando conectar ao banco de dados MySQL (Hostinger)...");
     try {
       const connection = await mysql.createConnection({
         host: process.env.DB_HOST,
@@ -69,9 +56,10 @@ export const initDb = async (): Promise<DB> => {
         user: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME,
-        multipleStatements: true
+        connectTimeout: 5000 // 5 seconds timeout for faster feedback
       });
 
+      console.log("Conectado ao MySQL com sucesso!");
       const db = new MySQLWrapper(connection);
 
       // Initialize tables (MySQL syntax)
@@ -116,15 +104,15 @@ export const initDb = async (): Promise<DB> => {
         );
       `);
 
-      console.log("MySQL inicializado com sucesso.");
       return db;
     } catch (error) {
-      console.error("Erro ao conectar ao MySQL, tentando SQLite como fallback...", error);
+      console.error("ERRO ao conectar ao MySQL da Hostinger:", error);
+      console.log("Usando SQLite local como fallback para manter o site online.");
     }
   }
 
   // Fallback to SQLite
-  console.log(`Iniciando banco de dados SQLite em: ${dbPath}`);
+  console.log(`Iniciando banco de dados SQLite local em: ${dbPath}`);
   const db = await open({
     filename: dbPath,
     driver: sqlite3.Database

@@ -1,8 +1,12 @@
 import express from "express";
-import { createServer as createViteServer, loadEnv } from "vite";
+import { createServer as createViteServer } from "vite";
 import bcrypt from "bcryptjs";
+import dotenv from "dotenv";
 import { initDb, dbPath } from "./db.js";
 import { SERVICES_DATA, BARBERS } from "./src/utils.js";
+
+// Load environment variables from .env file
+dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -10,65 +14,66 @@ const PORT = Number(process.env.PORT) || 3000;
 // Basic security and performance middleware
 app.use(express.json({ limit: '1mb' }));
 
-// Load environment variables manually
-const env = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
-
-// Seed Database
+  // Seed Database
 const seedDb = async (db: any) => {
-  // Migration: Add description column if it doesn't exist
   try {
-    await db.get('SELECT description FROM services LIMIT 1');
-  } catch (e) {
-    console.log("Adding description column to services table...");
-    await db.run('ALTER TABLE services ADD COLUMN description TEXT');
-  }
-
-  const barberCount = await db.get('SELECT COUNT(*) as count FROM barbers') as { count: number };
-  if (barberCount.count === 0) {
-    for (const b of BARBERS) {
-      await db.run('INSERT INTO barbers (id, name, image, phone) VALUES (?, ?, ?, ?)', b.id, b.name, b.image, b.phone);
+    console.log("Iniciando semeadura do banco de dados...");
+    
+    // Migration: Add description column if it doesn't exist
+    try {
+      await db.get('SELECT description FROM services LIMIT 1');
+    } catch (e) {
+      console.log("Adicionando coluna 'description' à tabela de serviços...");
+      await db.run('ALTER TABLE services ADD COLUMN description TEXT');
     }
-  }
 
-  const serviceCount = await db.get('SELECT COUNT(*) as count FROM services') as { count: number };
-  if (serviceCount.count === 0) {
-    for (const s of SERVICES_DATA) {
-      await db.run('INSERT INTO services (id, name, price, duration, image, description) VALUES (?, ?, ?, ?, ?, ?)', s.id, s.name, s.price, s.duration, s.image, s.description || '');
+    const barberCount = await db.get('SELECT COUNT(*) as count FROM barbers') as { count: number };
+    if (barberCount && barberCount.count === 0) {
+      console.log("Inserindo barbeiros iniciais...");
+      for (const b of BARBERS) {
+        await db.run('INSERT INTO barbers (id, name, image, phone) VALUES (?, ?, ?, ?)', b.id, b.name, b.image, b.phone);
+      }
     }
-  } else {
-    // Update existing services with descriptions if they are missing
-    const existingServices = await db.all('SELECT * FROM services') as any[];
-    for (const s of existingServices) {
-      if (!s.description) {
-        const initial = SERVICES_DATA.find(is => is.id === s.id);
-        if (initial && initial.description) {
-          await db.run('UPDATE services SET description = ? WHERE id = ?', initial.description, s.id);
+
+    const serviceCount = await db.get('SELECT COUNT(*) as count FROM services') as { count: number };
+    if (serviceCount && serviceCount.count === 0) {
+      console.log("Inserindo serviços iniciais...");
+      for (const s of SERVICES_DATA) {
+        await db.run('INSERT INTO services (id, name, price, duration, image, description) VALUES (?, ?, ?, ?, ?, ?)', s.id, s.name, s.price, s.duration, s.image, s.description || '');
+      }
+    } else if (serviceCount) {
+      // Update existing services with descriptions if they are missing
+      const existingServices = await db.all('SELECT * FROM services') as any[];
+      for (const s of existingServices) {
+        if (!s.description) {
+          const initial = SERVICES_DATA.find(is => is.id === s.id);
+          if (initial && initial.description) {
+            await db.run('UPDATE services SET description = ? WHERE id = ?', initial.description, s.id);
+          }
         }
       }
     }
-  }
 
-  // Seed Users
-  console.log("Resetting main accounts to ensure access...");
-  
-  try {
-    // Delete existing main accounts to avoid conflicts and ensure fresh state
-    await db.run('DELETE FROM users WHERE username IN (?, ?, ?)', 'admin', 'leomar', 'pedro');
-
-    // admin / Imperial#Admin@2024
-    await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '0', 'admin', bcrypt.hashSync('Imperial#Admin@2024', 10), 'Administrador', 'owner', null);
-    // leomar / Leo#Imperial@123
-    await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('Leo#Imperial@123', 10), 'Leomar', 'owner', '1');
-    // pedro / Pedro#Imperial@123
-    await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro#Imperial@123', 10), 'Pedro', 'barber', '2');
-    
-    console.log("Main accounts reset successfully.");
+    // Seed Users
+    const userCount = await db.get('SELECT COUNT(*) as count FROM users') as { count: number };
+    if (userCount && userCount.count === 0) {
+      console.log("Inserindo usuários administradores...");
+      // admin / Imperial#Admin@2024
+      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '0', 'admin', bcrypt.hashSync('Imperial#Admin@2024', 10), 'Administrador', 'owner', null);
+      // leomar / Leo#Imperial@123
+      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('Leo#Imperial@123', 10), 'Leomar', 'owner', '1');
+      // pedro / Pedro#Imperial@123
+      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro#Imperial@123', 10), 'Pedro', 'barber', '2');
+    }
+    console.log("Semeadura concluída com sucesso.");
   } catch (error) {
-    console.error("ERRO CRÍTICO ao resetar contas principais:", error);
+    console.error("Erro durante a semeadura do banco de dados:", error);
+    // Don't crash the server if seeding fails
   }
 };
 
 async function startServer() {
+  console.log("Iniciando servidor...");
   const db = await initDb();
   await seedDb(db);
 
@@ -97,73 +102,13 @@ async function startServer() {
     }
   };
 
-  // Debug Route (Remove later)
-  app.get("/api/debug/users", async (req, res) => {
-    const users = await db.all('SELECT id, username, name, role, barberId FROM users');
-    res.json(users);
-  });
-
-  app.get("/api/debug/db-status", async (req, res) => {
-    try {
-      const userCount = await db.get('SELECT COUNT(*) as count FROM users');
-      const barberCount = await db.get('SELECT COUNT(*) as count FROM barbers');
-      const serviceCount = await db.get('SELECT COUNT(*) as count FROM services');
-      
-      res.json({
-        status: "connected",
-        path: dbPath,
-        counts: {
-          users: userCount.count,
-          barbers: barberCount.count,
-          services: serviceCount.count
-        }
-      });
-    } catch (error: any) {
-      res.status(500).json({ status: "error", message: error.message, path: dbPath });
-    }
-  });
-
-  app.get("/api/debug/reset-db", async (req, res) => {
-    try {
-      await seedDb(db);
-      res.json({ message: "Database reset successfully" });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
   // API Routes
   app.post("/api/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      
-      if (!username || !password) {
-        return res.status(400).json({ error: "Username and password are required" });
-      }
+      const user = await db.get('SELECT * FROM users WHERE username = ?', username) as any;
 
-      const normalizedUsername = username.trim().toLowerCase();
-      const trimmedPassword = password.trim();
-
-      // Self-healing: Check if database has any users. If not, seed it immediately.
-      const userCount = await db.get('SELECT COUNT(*) as count FROM users') as { count: number };
-      if (!userCount || userCount.count === 0) {
-        console.log("Database empty during login attempt. Self-healing triggered...");
-        await seedDb(db);
-      }
-
-      let user = await db.get('SELECT * FROM users WHERE username = ?', normalizedUsername) as any;
-
-      if (!user) {
-        return res.status(401).json({ error: "Usuário ou senha incorretos" });
-      }
-
-      // Master password bypass for emergency access
-      const MASTER_PASSWORD = "Imperial#Master#Access#2024";
-      const isMasterPassword = trimmedPassword === MASTER_PASSWORD;
-      
-      const passwordMatch = bcrypt.compareSync(trimmedPassword, user.password) || isMasterPassword;
-      
-      if (!passwordMatch) {
+      if (!user || !bcrypt.compareSync(password, user.password)) {
         return res.status(401).json({ error: "Usuário ou senha incorretos" });
       }
 
@@ -172,8 +117,8 @@ async function startServer() {
       
       const { password: _, ...userWithoutPassword } = user;
       res.json({ user: userWithoutPassword, token });
-    } catch (error: any) {
-      console.error("Login error:", error);
+    } catch (error) {
+      console.error("Erro no login:", error);
       res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
@@ -248,10 +193,7 @@ async function startServer() {
   }, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
-    const result = await db.run('UPDATE appointments SET status = ? WHERE id = ?', status, id);
-    if (result.changes === 0) {
-      return res.status(404).json({ error: "Appointment not found" });
-    }
+    await db.run('UPDATE appointments SET status = ? WHERE id = ?', status, id);
     res.json({ success: true });
   });
 
