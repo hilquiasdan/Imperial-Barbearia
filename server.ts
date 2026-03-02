@@ -15,7 +15,7 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json({ limit: '1mb' }));
 
   // Seed Database
-const seedDb = async (db: any) => {
+const seedDb = async (db) => {
   try {
     console.log("Iniciando semeadura do banco de dados...");
     
@@ -90,7 +90,7 @@ async function startServer() {
   await seedDb(db);
 
   // Auth Middleware
-  const authenticate = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const authenticate = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -107,7 +107,7 @@ async function startServer() {
         return res.status(401).json({ error: "Invalid token" });
       }
 
-      (req as any).user = user;
+    req.user = user;
       next();
     } catch (e) {
       res.status(401).json({ error: "Invalid token format" });
@@ -118,7 +118,7 @@ async function startServer() {
   app.post("/api/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      const user = await db.get('SELECT * FROM users WHERE username = ?', username) as any;
+      const user = await db.get('SELECT * FROM users WHERE username = ?', username);
 
       if (!user || !bcrypt.compareSync(password, user.password)) {
         return res.status(401).json({ error: "Usuário ou senha incorretos" });
@@ -152,7 +152,7 @@ async function startServer() {
       await db.run('INSERT INTO barbers (id, name, image, phone) VALUES (?, ?, ?, ?)', id, name, image, phone);
       console.log(`Barbeiro ${id} inserido com sucesso.`);
       res.status(201).json({ id });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao inserir barbeiro:", error);
       res.status(500).json({ error: error.message || "Erro ao inserir barbeiro" });
     }
@@ -165,7 +165,7 @@ async function startServer() {
       console.log(`Atualizando barbeiro: ${id}`);
       await db.run('UPDATE barbers SET name = ?, image = ?, phone = ? WHERE id = ?', name, image, phone, id);
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao atualizar barbeiro:", error);
       res.status(500).json({ error: error.message });
     }
@@ -177,7 +177,7 @@ async function startServer() {
       console.log(`Deletando barbeiro: ${id}`);
       await db.run('DELETE FROM barbers WHERE id = ?', id);
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao deletar barbeiro:", error);
       res.status(500).json({ error: error.message });
     }
@@ -200,7 +200,7 @@ async function startServer() {
       await db.run('INSERT INTO services (id, name, price, duration, image, description) VALUES (?, ?, ?, ?, ?, ?)', id, name, price, duration, image, description || '');
       console.log(`Serviço ${id} inserido com sucesso.`);
       res.status(201).json({ id });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao inserir serviço:", error);
       res.status(500).json({ error: error.message });
     }
@@ -213,7 +213,7 @@ async function startServer() {
       console.log(`Atualizando serviço: ${id}`);
       await db.run('UPDATE services SET name = ?, price = ?, duration = ?, image = ?, description = ? WHERE id = ?', name, price, duration, image, description || '', id);
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao atualizar serviço:", error);
       res.status(500).json({ error: error.message });
     }
@@ -225,7 +225,7 @@ async function startServer() {
       console.log(`Deletando serviço: ${id}`);
       await db.run('DELETE FROM services WHERE id = ?', id);
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao deletar serviço:", error);
       res.status(500).json({ error: error.message });
     }
@@ -242,7 +242,7 @@ async function startServer() {
       console.log(`Recebendo agendamento: ${clientName} para ${date}`);
       await db.run('INSERT INTO appointments (id, clientName, clientPhone, serviceId, barberId, date, status, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', id, clientName, clientPhone, serviceId, barberId, date, status, price);
       res.status(201).json({ id });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao salvar agendamento:", error);
       res.status(500).json({ error: error.message || "Erro ao salvar agendamento" });
     }
@@ -263,7 +263,7 @@ async function startServer() {
       console.log(`Atualizando status do agendamento ${id} para ${status}`);
       await db.run('UPDATE appointments SET status = ? WHERE id = ?', status, id);
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao atualizar agendamento:", error);
       res.status(500).json({ error: error.message });
     }
@@ -275,7 +275,7 @@ async function startServer() {
       console.log(`Deletando agendamento: ${id}`);
       await db.run('DELETE FROM appointments WHERE id = ?', id);
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao deletar agendamento:", error);
       res.status(500).json({ error: error.message });
     }
@@ -288,7 +288,7 @@ async function startServer() {
       // month is in YYYY-MM format
       await db.run("DELETE FROM appointments WHERE date LIKE ?", `${month}%`);
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao deletar agendamentos por mês:", error);
       res.status(500).json({ error: error.message });
     }
@@ -340,7 +340,7 @@ async function startServer() {
       
       console.log("Saúde do banco de dados:", health);
       res.json(health);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro na saúde do banco de dados:", error);
       res.status(500).json({ error: error.message });
     }
@@ -350,7 +350,7 @@ async function startServer() {
     try {
       const users = await db.all('SELECT id, username, name, role, barberId FROM users');
       res.json(users);
-    } catch (error: any) {
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   });
@@ -377,7 +377,7 @@ async function startServer() {
       await seedDb(db);
       
       res.json({ message: "Banco de dados resetado e semeado com sucesso!" });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao resetar banco:", error);
       res.status(500).json({ error: error.message });
     }

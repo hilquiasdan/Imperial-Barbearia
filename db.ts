@@ -14,16 +14,19 @@ export interface DB {
 }
 
 // MySQL Wrapper
-class MySQLWrapper implements DB {
-  constructor(private pool: mysql.Pool) {}
+class MySQLWrapper {
+  pool;
+  constructor(pool) {
+    this.pool = pool;
+  }
 
-  async get(sql: string, ...params: any[]) {
+  async get(sql, ...params) {
     let connection;
     try {
       connection = await this.pool.getConnection();
-      const [rows]: any = await connection.execute(sql, params);
+      const [rows] = await connection.execute(sql, params);
       return rows[0];
-    } catch (error: any) {
+    } catch (error) {
       console.error(`MySQL GET Error [${sql}]:`, error.message);
       throw error;
     } finally {
@@ -31,13 +34,13 @@ class MySQLWrapper implements DB {
     }
   }
 
-  async all(sql: string, ...params: any[]) {
+  async all(sql, ...params) {
     let connection;
     try {
       connection = await this.pool.getConnection();
-      const [rows]: any = await connection.execute(sql, params);
+      const [rows] = await connection.execute(sql, params);
       return rows;
-    } catch (error: any) {
+    } catch (error) {
       console.error(`MySQL ALL Error [${sql}]:`, error.message);
       throw error;
     } finally {
@@ -45,13 +48,13 @@ class MySQLWrapper implements DB {
     }
   }
 
-  async run(sql: string, ...params: any[]) {
+  async run(sql, ...params) {
     let connection;
     try {
       connection = await this.pool.getConnection();
-      const [result]: any = await connection.execute(sql, params);
+      const [result] = await connection.execute(sql, params);
       return { lastID: result.insertId, changes: result.affectedRows };
-    } catch (error: any) {
+    } catch (error) {
       console.error(`MySQL RUN Error [${sql}]:`, error.message);
       throw error;
     } finally {
@@ -59,7 +62,7 @@ class MySQLWrapper implements DB {
     }
   }
 
-  async exec(sql: string) {
+  async exec(sql) {
     let connection;
     try {
       connection = await this.pool.getConnection();
@@ -67,7 +70,7 @@ class MySQLWrapper implements DB {
       for (const s of statements) {
         await connection.query(s);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error(`MySQL EXEC Error:`, error.message);
       throw error;
     } finally {
@@ -76,7 +79,7 @@ class MySQLWrapper implements DB {
   }
 }
 
-export const initDb = async (): Promise<DB> => {
+export const initDb = async () => {
   // Check if MySQL environment variables are present and not just placeholders
   const useMySQL = process.env.DB_HOST && 
                    process.env.DB_USER && 
@@ -103,7 +106,7 @@ export const initDb = async (): Promise<DB> => {
       });
 
       console.log("Pool de conexões MySQL criado com sucesso!");
-      const db = new MySQLWrapper(pool as any);
+      const db = new MySQLWrapper(pool);
 
       // Initialize tables (MySQL syntax)
       await db.exec(`
@@ -163,7 +166,7 @@ export const initDb = async (): Promise<DB> => {
       filename: dbPath,
       driver: sqlite3.Database
     });
-  } catch (error: any) {
+  } catch (error) {
     if (error.message.includes('SQLITE_CORRUPT')) {
       console.error("Banco de dados SQLite corrompido detectado. Tentando recriar...");
       const fs = await import('fs/promises');
@@ -225,5 +228,5 @@ export const initDb = async (): Promise<DB> => {
     );
   `);
 
-  return db as any;
+  return db;
 };
