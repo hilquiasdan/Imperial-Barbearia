@@ -1,10 +1,15 @@
 import express from "express";
 import cors from "cors";
 import path from "path";
+import fs from "fs";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
+import { fileURLToPath } from 'url';
 import { initDb, dbPath } from "./db.js";
 import { SERVICES_DATA, BARBERS } from "./src/backendUtils.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables from .env file
 dotenv.config();
@@ -59,25 +64,24 @@ const seedDb = async (db) => {
     }
 
     // Seed Users
-    const adminUser = await db.get('SELECT * FROM users WHERE username = ?', 'admin');
+    const users = await db.all('SELECT * FROM users');
+    console.log(`- Usuários encontrados: ${users.length}`);
+    
+    // Check if admin exists, if not create it
+    const adminUser = users.find(u => u.username === 'admin');
     if (!adminUser) {
       console.log("Inserindo usuário administrador padrão...");
       // admin / Imperial#Admin@2024
       await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '0', 'admin', bcrypt.hashSync('Imperial#Admin@2024', 10), 'Administrador', 'owner', null);
     }
 
-    const leomarUser = await db.get('SELECT * FROM users WHERE username = ?', 'leomar');
-    if (!leomarUser) {
-      console.log("Inserindo usuário Leomar...");
-      // leomar / Leo#Imperial@123
-      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('Leo#Imperial@123', 10), 'Leomar', 'owner', '1');
-    }
-
-    const pedroUser = await db.get('SELECT * FROM users WHERE username = ?', 'pedro');
-    if (!pedroUser) {
-      console.log("Inserindo usuário Pedro...");
-      // pedro / Pedro#Imperial@123
-      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro#Imperial@123', 10), 'Pedro', 'barber', '2');
+    // Migration: Ensure all passwords are hashed
+    for (const user of users) {
+      if (user.password && !user.password.startsWith('$2a$') && !user.password.startsWith('$2b$')) {
+        console.log(`Hasheando senha em texto puro para o usuário: ${user.username}`);
+        const hashedPassword = bcrypt.hashSync(user.password, 10);
+        await db.run('UPDATE users SET password = ? WHERE id = ?', hashedPassword, user.id);
+      }
     }
     console.log("Semeadura concluída com sucesso.");
   } catch (error) {
@@ -314,6 +318,33 @@ async function startServer() {
     res.json(stats);
   });
 
+  app.get("/api/diag", async (req, res) => {
+    try {
+      const dbInfo = {
+        type: process.env.DB_HOST ? 'MySQL' : 'SQLite',
+        host: process.env.DB_HOST || 'local',
+        database: process.env.DB_NAME || 'imperial.db'
+      };
+      
+      const counts = {
+        users: (await db.get("SELECT COUNT(*) as count FROM users")).count,
+        barbers: (await db.get("SELECT COUNT(*) as count FROM barbers")).count,
+        services: (await db.get("SELECT COUNT(*) as count FROM services")).count,
+        appointments: (await db.get("SELECT COUNT(*) as count FROM appointments")).count
+      };
+
+      res.json({
+        status: "ok",
+        time: new Date().toISOString(),
+        db: dbInfo,
+        counts: counts,
+        env: process.env.NODE_ENV || 'development'
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/health/db", async (req, res) => {
     try {
       console.log("Verificando saúde do banco de dados...");
@@ -386,12 +417,20 @@ async function startServer() {
   });
 
   // Serve static files from the 'dist' directory
-  const distPath = path.resolve(process.cwd(), "dist");
-  app.use(express.static(distPath));
+  const distPath = path.join(__dirname, "dist");
+  console.log(`Servindo arquivos estáticos de: ${distPath}`);
   
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
-  });
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  } else {
+    console.warn("AVISO: Pasta 'dist' não encontrada. O frontend pode não ser servido corretamente.");
+    app.get("/", (req, res) => {
+      res.send("Servidor Backend Imperial Barbearia está rodando. Por favor, execute 'npm run build' para servir o frontend.");
+    });
+  }
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Servidor rodando em produção na porta ${PORT}`);

@@ -28,6 +28,10 @@ class MySQLWrapper {
       return rows[0];
     } catch (error) {
       console.error(`MySQL GET Error [${sql}]:`, error.message);
+      // If it's a connection error, try to re-initialize or handle it
+      if (error.code === 'PROTOCOL_CONNECTION_LOST' || error.code === 'ECONNREFUSED') {
+        console.error("Conexão MySQL perdida. Verifique as credenciais no .env");
+      }
       throw error;
     } finally {
       if (connection) connection.release();
@@ -149,9 +153,10 @@ export const initDb = async () => {
         password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME,
         waitForConnections: true,
-        connectionLimit: 5,
+        connectionLimit: 10,
         queueLimit: 0,
-        connectTimeout: 20000 // Aumentado para 20s para conexões remotas
+        connectTimeout: 30000, // Aumentado para 30s para conexões remotas
+        decimalNumbers: true // Garante que DECIMAL seja retornado como número
       });
 
       const db = new MySQLWrapper(pool);
