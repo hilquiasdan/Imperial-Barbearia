@@ -2,6 +2,7 @@ import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import mysql from 'mysql2/promise';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -78,6 +79,57 @@ class MySQLWrapper {
   }
 }
 
+// Migration function to transfer data from SQLite to MySQL
+const migrateFromSQLite = async (mysqlDb) => {
+  try {
+    const sqliteExists = await fs.promises.access(dbPath).then(() => true).catch(() => false);
+    if (!sqliteExists) return;
+
+    console.log("Detectado banco de dados SQLite local. Iniciando verificação de migração...");
+    
+    const sqliteDb = await open({
+      filename: dbPath,
+      driver: sqlite3.Database
+    });
+
+    // Migrate Appointments
+    const mysqlAppointments = await mysqlDb.get('SELECT COUNT(*) as count FROM appointments');
+    if (mysqlAppointments && mysqlAppointments.count === 0) {
+      const sqliteAppointments = await sqliteDb.all('SELECT * FROM appointments');
+      if (sqliteAppointments.length > 0) {
+        console.log(`Migrando ${sqliteAppointments.length} agendamentos do SQLite para MySQL...`);
+        for (const appt of sqliteAppointments) {
+          await mysqlDb.run(
+            'INSERT INTO appointments (id, clientName, clientPhone, serviceId, barberId, date, status, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            appt.id, appt.clientName, appt.clientPhone, appt.serviceId, appt.barberId, appt.date, appt.status, appt.price
+          );
+        }
+      }
+    }
+
+    // Migrate Users (if not already seeded)
+    const mysqlUsers = await mysqlDb.get('SELECT COUNT(*) as count FROM users');
+    if (mysqlUsers && mysqlUsers.count <= 3) { // 3 is the default seed count
+      const sqliteUsers = await sqliteDb.all('SELECT * FROM users');
+      for (const user of sqliteUsers) {
+        const exists = await mysqlDb.get('SELECT id FROM users WHERE username = ?', user.username);
+        if (!exists) {
+          console.log(`Migrando usuário ${user.username} do SQLite para MySQL...`);
+          await mysqlDb.run(
+            'INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)',
+            user.id, user.username, user.password, user.name, user.role, user.barberId
+          );
+        }
+      }
+    }
+
+    await sqliteDb.close();
+    console.log("Migração concluída.");
+  } catch (error) {
+    console.error("Erro durante a migração SQLite -> MySQL:", error);
+  }
+};
+
 export const initDb = async () => {
   // Check if MySQL environment variables are present and not just placeholders
   const useMySQL = process.env.DB_HOST && 
@@ -148,6 +200,9 @@ export const initDb = async () => {
           barberId VARCHAR(255)
         );
       `);
+
+      // Run migration after tables are ready
+      await migrateFromSQLite(db);
 
       return db;
     } catch (error) {
