@@ -1,9 +1,10 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
+import cors from "cors";
+import path from "path";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 import { initDb, dbPath } from "./db.js";
-import { SERVICES_DATA, BARBERS } from "./src/utils.js";
+import { SERVICES_DATA, BARBERS } from "./src/backendUtils.js";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -12,6 +13,7 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 // Basic security and performance middleware
+app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
   // Seed Database
@@ -383,21 +385,16 @@ async function startServer() {
     }
   });
 
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    app.use(express.static("dist"));
-    app.get("*", (req, res) => {
-      res.sendFile("dist/index.html", { root: "." });
-    });
-  }
+  // Serve static files from the 'dist' directory
+  const distPath = path.resolve(process.cwd(), "dist");
+  app.use(express.static(distPath));
+  
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(distPath, "index.html"));
+  });
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
+    console.log(`Servidor rodando em produção na porta ${PORT}`);
   });
 }
 

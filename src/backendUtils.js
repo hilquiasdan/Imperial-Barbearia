@@ -1,4 +1,4 @@
-import { LEOMAR_IMAGE, PEDRO_IMAGE } from './assets/barberImages.js';
+import { LEOMAR_IMAGE, PEDRO_IMAGE } from './assets/backendBarberImages.js';
 
 export const SERVICES_DATA = [
   { id: '1', name: 'Corte Degradê Social ou Moicano', price: 50, duration: 45, image: 'https://i.postimg.cc/NM66ZV3g/Corte-Degrade-Social-ou-Moicano.webp', description: 'Corte moderno com transição suave nas laterais, ideal para um visual limpo e atual.' },
