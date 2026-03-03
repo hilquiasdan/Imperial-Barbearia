@@ -89,6 +89,7 @@ export const initDb = async () => {
     console.log(`Tentando conectar ao banco de dados MySQL da Hostinger...`);
     
     try {
+      console.log(`Conectando ao MySQL em ${process.env.DB_HOST}:${process.env.DB_PORT || 3306}...`);
       const pool = mysql.createPool({
         host: process.env.DB_HOST,
         port: Number(process.env.DB_PORT) || 3306,
@@ -98,7 +99,7 @@ export const initDb = async () => {
         waitForConnections: true,
         connectionLimit: 5,
         queueLimit: 0,
-        connectTimeout: 15000
+        connectTimeout: 20000 // Aumentado para 20s para conexões remotas
       });
 
       const db = new MySQLWrapper(pool);
