@@ -1,4 +1,6 @@
 import express from "express";
+import cors from "cors";
+import path from "path";
 import { createServer as createViteServer } from "vite";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
@@ -12,6 +14,7 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 // Basic security and performance middleware
+app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
   // Seed Database
