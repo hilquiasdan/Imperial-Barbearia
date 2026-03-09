@@ -75,6 +75,20 @@ const seedDb = async (db) => {
       await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '0', 'admin', bcrypt.hashSync('Imperial#Admin@2024', 10), 'Administrador', 'owner', null);
     }
 
+    // Add Leomar (Owner/Admin)
+    const leomarUser = users.find(u => u.username === 'leomar');
+    if (!leomarUser) {
+      console.log("Inserindo usuário Leomar (Admin)...");
+      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('Leomar@Imperial2024', 10), 'Leomar', 'owner', '1');
+    }
+
+    // Add Pedro (Barber)
+    const pedroUser = users.find(u => u.username === 'pedro');
+    if (!pedroUser) {
+      console.log("Inserindo usuário Pedro (Barbeiro)...");
+      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro@Imperial2024', 10), 'Pedro', 'barber', '2');
+    }
+
     // Migration: Ensure all passwords are hashed
     for (const user of users) {
       if (user.password && !user.password.startsWith('$2a$') && !user.password.startsWith('$2b$')) {

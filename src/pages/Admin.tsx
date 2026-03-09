@@ -838,13 +838,15 @@ export default function Admin() {
                       })}
                     </select>
                   </div>
-                  <button 
-                    onClick={handleDeleteMonth}
-                    className="p-3 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-white/5 hover:border-red-400/50"
-                    title="Excluir todos os registros deste mês"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  {user?.role === 'owner' && (
+                    <button 
+                      onClick={handleDeleteMonth}
+                      className="p-3 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-white/5 hover:border-red-400/50"
+                      title="Excluir todos os registros deste mês"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -878,13 +880,15 @@ export default function Admin() {
                             </div>
                           </div>
                         </div>
-                        <button 
-                          onClick={() => { if(window.confirm('Excluir este registro do histórico?')) deleteAppointment(app.id); }}
-                          className="p-3 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-white/5 hover:border-red-400/50"
-                          title="Excluir registro"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        {user?.role === 'owner' && (
+                          <button 
+                            onClick={() => { if(window.confirm('Excluir este registro do histórico?')) deleteAppointment(app.id); }}
+                            className="p-3 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-white/5 hover:border-red-400/50"
+                            title="Excluir registro"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
                       </div>
                     ))
                   ) : (
