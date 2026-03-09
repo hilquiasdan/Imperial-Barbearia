@@ -323,25 +323,51 @@ async function startServer() {
       const dbInfo = {
         type: process.env.DB_HOST ? 'MySQL' : 'SQLite',
         host: process.env.DB_HOST || 'local',
-        database: process.env.DB_NAME || 'imperial.db'
+        database: process.env.DB_NAME || 'imperial.db',
+        connected: !!db
       };
       
-      const counts = {
-        users: (await db.get("SELECT COUNT(*) as count FROM users")).count,
-        barbers: (await db.get("SELECT COUNT(*) as count FROM barbers")).count,
-        services: (await db.get("SELECT COUNT(*) as count FROM services")).count,
-        appointments: (await db.get("SELECT COUNT(*) as count FROM appointments")).count
+      const envVars = {
+        DB_HOST: !!process.env.DB_HOST,
+        DB_USER: !!process.env.DB_USER,
+        DB_NAME: !!process.env.DB_NAME,
+        DB_PASSWORD: !!process.env.DB_PASSWORD,
+        PORT: process.env.PORT || 3000,
+        NODE_ENV: process.env.NODE_ENV || 'development'
       };
+
+      let counts = { users: 0, barbers: 0, services: 0, appointments: 0 };
+      let lastAppointments = [];
+      
+      if (db) {
+        counts = {
+          users: (await db.get("SELECT COUNT(*) as count FROM users")).count,
+          barbers: (await db.get("SELECT COUNT(*) as count FROM barbers")).count,
+          services: (await db.get("SELECT COUNT(*) as count FROM services")).count,
+          appointments: (await db.get("SELECT COUNT(*) as count FROM appointments")).count
+        };
+        lastAppointments = await db.all("SELECT id, clientName, date, status FROM appointments ORDER BY date DESC LIMIT 5");
+      }
 
       res.json({
         status: "ok",
         time: new Date().toISOString(),
         db: dbInfo,
+        env: envVars,
         counts: counts,
-        env: process.env.NODE_ENV || 'development'
+        lastAppointments: lastAppointments,
+        cwd: process.cwd(),
+        dir: __dirname
       });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ 
+        error: error.message,
+        stack: error.stack,
+        env_check: {
+          DB_HOST: !!process.env.DB_HOST,
+          DB_USER: !!process.env.DB_USER
+        }
+      });
     }
   });
 

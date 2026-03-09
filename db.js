@@ -136,10 +136,12 @@ const migrateFromSQLite = async (mysqlDb) => {
 
 export const initDb = async () => {
   // Check if MySQL environment variables are present and not just placeholders
-  const useMySQL = process.env.DB_HOST && 
-                   process.env.DB_USER && 
-                   process.env.DB_NAME &&
-                   process.env.DB_PASSWORD;
+  const hasHost = !!process.env.DB_HOST;
+  const hasUser = !!process.env.DB_USER;
+  const hasName = !!process.env.DB_NAME;
+  const hasPass = !!process.env.DB_PASSWORD;
+
+  const useMySQL = hasHost && hasUser && hasName && hasPass;
 
   if (useMySQL) {
     console.log(`Tentando conectar ao banco de dados MySQL da Hostinger...`);
@@ -212,6 +214,17 @@ export const initDb = async () => {
       return db;
     } catch (error) {
       console.error("FALHA ao conectar ao MySQL da Hostinger:", error.message);
+      console.log("Detalhes do erro MySQL:", {
+        code: error.code,
+        errno: error.errno,
+        sqlState: error.sqlState
+      });
+      console.log("Variáveis presentes:", {
+        host: !!process.env.DB_HOST,
+        user: !!process.env.DB_USER,
+        name: !!process.env.DB_NAME,
+        pass: !!process.env.DB_PASSWORD
+      });
       console.log("Usando SQLite local temporariamente para evitar erro 503.");
     }
   }
