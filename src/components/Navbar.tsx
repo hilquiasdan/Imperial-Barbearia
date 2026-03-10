@@ -41,7 +41,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 sm:gap-3 group">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 group logo-glow-hover">
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
                <div className="absolute inset-0 border border-gold-500/30 rounded-full group-hover:border-gold-500 transition-colors duration-500"></div>
                <span className="font-serif text-2xl sm:text-3xl text-gold-500 font-bold drop-shadow-lg">I</span>

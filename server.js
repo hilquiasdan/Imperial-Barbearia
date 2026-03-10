@@ -138,7 +138,7 @@ async function startServer() {
   app.post("/api/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      const user = await db.get('SELECT * FROM users WHERE username = ?', username);
+      const user = await db.get('SELECT * FROM users WHERE LOWER(username) = LOWER(?)', username);
 
       if (!user || !bcrypt.compareSync(password, user.password)) {
         return res.status(401).json({ error: "Usuário ou senha incorretos" });

@@ -1,15 +1,19 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Calendar, Scissors, Info } from 'lucide-react';
 
 export default function Home() {
+  const { scrollY } = useScroll();
+  const y1 = useTransform(scrollY, [0, 500], [0, 200]);
+  const opacity = useTransform(scrollY, [0, 300], [1, 0]);
+
   return (
     <div className="relative min-h-screen flex flex-col">
       {/* Hero Section */}
       <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden">
         {/* Background with Parallax/Texture */}
-        <div className="absolute inset-0 z-0">
+        <motion.div className="absolute inset-0 z-0" style={{ y: y1 }}>
           <div className="absolute inset-0 bg-navy-900/75 z-10"></div>
           {/* Grain overlay - Now visible on mobile with lower opacity */}
           <div className="absolute inset-0 z-15 opacity-10 md:opacity-20 pointer-events-none" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
@@ -25,10 +29,10 @@ export default function Home() {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-navy-900/60 via-transparent to-navy-900 z-20"></div>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(11,29,53,0.8)_100%)] z-25"></div>
-        </div>
+        </motion.div>
 
         {/* Content */}
-        <div className="relative z-30 text-center px-4 max-w-4xl mx-auto">
+        <motion.div className="relative z-30 text-center px-4 max-w-4xl mx-auto" style={{ opacity }}>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -135,7 +139,7 @@ export default function Home() {
                 <motion.button
                   whileHover={{ scale: 1.05, translateY: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-10 py-4 bg-gold-500 text-navy-900 font-bold rounded-sm uppercase tracking-widest hover:bg-gold-400 transition-all shadow-[0_10px_30px_rgba(212,175,55,0.4)] flex items-center gap-3 shimmer-btn"
+                  className="px-10 py-4 gold-gradient-depth text-navy-900 font-bold rounded-sm uppercase tracking-widest hover:brightness-110 transition-all shadow-[0_10px_30px_rgba(212,175,55,0.4)] flex items-center gap-3 shimmer-btn"
                 >
                   <Calendar size={20} />
                   Agendar Horário
@@ -154,7 +158,7 @@ export default function Home() {
               </Link>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
         
         {/* Scroll Indicator */}
         <motion.div 
@@ -169,7 +173,7 @@ export default function Home() {
       </section>
 
       {/* Intro Section */}
-      <section className="py-20 bg-navy-900 relative">
+      <section className="py-32 bg-navy-900 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <motion.div

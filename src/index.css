@@ -45,6 +45,19 @@
     @apply bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300;
   }
 
+  .gold-gradient-depth {
+    @apply bg-gradient-to-b from-gold-300 via-gold-500 to-gold-600;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 15px rgba(0, 0, 0, 0.3);
+  }
+  
+  .logo-glow-hover {
+    @apply transition-all duration-500;
+  }
+  
+  .logo-glow-hover:hover {
+    filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.8));
+  }
+
   .glass-panel {
     @apply bg-navy-900/90 md:bg-navy-900/80 backdrop-blur-sm md:backdrop-blur-xl border border-white/10 shadow-xl relative overflow-hidden;
     transform: translateZ(0); /* Hardware acceleration */
