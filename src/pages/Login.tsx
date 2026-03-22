@@ -103,22 +103,7 @@ export default function Login() {
             Entrar no Painel
           </motion.button>
 
-          {window.location.search.includes('debug=true') && (
-            <div className="pt-4 border-t border-white/5">
-              <button 
-                type="button"
-                onClick={handleReset}
-                className="w-full text-xs text-gray-500 hover:text-white transition-colors uppercase tracking-widest"
-              >
-                Resetar Banco de Dados
-              </button>
-              {resetMessage && (
-                <p className="text-[10px] text-gold-500 text-center mt-2 animate-pulse">
-                  {resetMessage}
-                </p>
-              )}
-            </div>
-          )}
+          {/* Debug reset removed for security */}
         </form>
       </div>
     </div>

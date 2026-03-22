@@ -32,11 +32,11 @@ export default function Navbar() {
   return (
     <nav className={cn(
       "fixed w-full z-50 transition-all duration-500",
-      scrolled ? "bg-navy-900/80 backdrop-blur-sm md:backdrop-blur-2xl border-b border-white/10 py-2 shadow-2xl" : "bg-transparent py-4"
+      scrolled ? "bg-navy-900/95 md:bg-navy-900/80 backdrop-blur-none md:backdrop-blur-2xl border-b border-white/10 py-2 shadow-2xl" : "bg-transparent py-4"
     )}>
       {/* Subtle grain overlay for the navbar when scrolled - Hidden on mobile */}
       {scrolled && (
-        <div className="absolute inset-0 opacity-[0.03] md:opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
+        <div className="absolute inset-0 hidden md:block opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
       )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="flex items-center justify-between h-16">

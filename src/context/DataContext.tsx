@@ -75,13 +75,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (servicesRes.ok) setServices(await servicesRes.json());
         if (barbersRes.ok) setBarbers(await barbersRes.json());
 
-        // Only fetch appointments if authenticated
-        if (isAuthenticated && token) {
-          const appointmentsRes = await fetch('/api/appointments', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (appointmentsRes.ok) setAppointments(await appointmentsRes.json());
-        }
+        // Fetch appointments for all users (public route handles masking)
+        const appointmentsRes = await fetch('/api/appointments', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (appointmentsRes.ok) setAppointments(await appointmentsRes.json());
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -255,18 +253,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAppointment = async (id: string) => {
     try {
+      console.log(`Tentando deletar agendamento: ${id}`);
       const response = await fetch(`/api/appointments/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
+        console.log(`Agendamento ${id} deletado com sucesso.`);
         setAppointments(prev => prev.filter(a => a.id !== id));
         return true;
+      } else {
+        const errorData = await response.json();
+        console.error(`Erro ao deletar agendamento ${id}:`, errorData);
+        return false;
       }
-      return false;
     } catch (error) {
-      console.error("Error deleting appointment:", error);
+      console.error(`Erro de rede ao deletar agendamento ${id}:`, error);
       return false;
     }
   };

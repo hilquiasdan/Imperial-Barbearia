@@ -251,14 +251,15 @@ export default function Admin() {
     }
   };
 
-  const handleCancel = (e: React.MouseEvent, app: Appointment) => {
+  const handleCancel = async (e: React.MouseEvent, app: Appointment) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // 1. Update system state immediately
-    cancelAppointment(app.id);
-    
-    // 2. Prepare WhatsApp notification
+    if (!window.confirm(`Deseja realmente CANCELAR o agendamento de ${app.clientName} e enviar mensagem de aviso?`)) {
+      return;
+    }
+
+    // 1. Prepare WhatsApp notification
     let cleanedPhone = app.clientPhone.replace(/\D/g, '');
     
     // Remove leading zero if present (common in Brazil)
@@ -267,30 +268,26 @@ export default function Admin() {
     }
     
     // Ensure 55 prefix for Brazil
-    // If it doesn't start with 55, or if it starts with 55 but is too short (e.g. just 55 + 8 digits)
-    // A full Brazil number with 55 + DDD + 9 digits is 13 digits.
-    // A full Brazil number with 55 + DDD + 8 digits is 12 digits.
     let phoneWithCountry = cleanedPhone;
-    if (!cleanedPhone.startsWith('55')) {
+    if (cleanedPhone.length > 0 && !cleanedPhone.startsWith('55')) {
       phoneWithCountry = `55${cleanedPhone}`;
-    } else if (cleanedPhone.startsWith('55') && cleanedPhone.length < 12) {
-      // If it starts with 55 but is like 55819... (11 digits total), it's likely missing the DDD or something, 
-      // but more likely the user entered 55 as part of the local number by mistake.
-      // However, the most common case is just adding 55 if not there.
     }
     
     const dateStr = new Date(app.date).toLocaleDateString('pt-BR');
     const timeStr = new Date(app.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     
-    const message = `*IMPERIAL BARBEARIA*\n\nPrezado(a) *${app.clientName}*,\n\nLamentamos informar que, por motivos de força maior, seu agendamento de *${getServiceName(app.serviceId)}* com o profissional *${getBarberName(app.barberId)}* para o dia ${dateStr} às ${timeStr} precisou ser cancelado.\n\nPedimos sinceras desculpas pelo inconveniente. Gostaríamos de convidá-lo(a) a realizar um novo agendamento através do nosso site ou respondendo a esta mensagem para encontrarmos um novo horário.\n\nAtenciosamente,\n*Equipe Imperial Barbearia*`;
+    const message = `*IMPERIAL BARBEARIA*\n\nPrezado(a) *${app.clientName}*,\n\nLamentamos informar que seu agendamento de *${getServiceName(app.serviceId)}* com o profissional *${getBarberName(app.barberId)}* para o dia ${dateStr} às ${timeStr} precisou ser cancelado.\n\nPedimos sinceras desculpas pelo inconveniente. Gostaríamos de convidá-lo(a) a realizar um novo agendamento através do nosso site.\n\nAtenciosamente,\n*Equipe Imperial Barbearia*`;
     
     const whatsappUrl = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`;
     
-    // 3. Open WhatsApp (Robust way)
+    // 2. Open WhatsApp
     const win = window.open(whatsappUrl, '_blank');
     if (!win) {
       window.location.href = whatsappUrl;
     }
+    
+    // 3. Delete from database (to "exclude" it as requested)
+    await deleteAppointment(app.id);
   };
 
   // --- Services Logic ---
@@ -882,9 +879,9 @@ export default function Admin() {
                         </div>
                         {user?.role === 'owner' && (
                           <button 
-                            onClick={() => { if(window.confirm('Excluir este registro do histórico?')) deleteAppointment(app.id); }}
+                            onClick={(e) => handleCancel(e, app)}
                             className="p-3 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-white/5 hover:border-red-400/50"
-                            title="Excluir registro"
+                            title="Cancelar e Excluir registro"
                           >
                             <Trash2 size={18} />
                           </button>

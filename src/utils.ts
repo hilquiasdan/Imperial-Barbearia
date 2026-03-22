@@ -33,8 +33,8 @@ export const SERVICES_DATA = [
 ];
 
 export const BARBERS = [
-  { id: '1', name: 'Leomar', image: LEOMAR_IMAGE, phone: '558184361210' },
-  { id: '2', name: 'Pedro', image: PEDRO_IMAGE, phone: '558173176920' },
+  { id: '1', name: 'Leomar', image: LEOMAR_IMAGE, phone: '5581984361210' },
+  { id: '2', name: 'Pedro', image: PEDRO_IMAGE, phone: '5581973176920' },
 ];
 
 export const REVIEWS = [

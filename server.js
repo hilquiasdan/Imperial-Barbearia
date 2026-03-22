@@ -251,9 +251,35 @@ async function startServer() {
     }
   });
 
-  app.get("/api/appointments", authenticate, async (req, res) => {
-    const appointments = await db.all('SELECT * FROM appointments ORDER BY date DESC');
-    res.json(appointments);
+  app.get("/api/appointments", async (req, res) => {
+    try {
+      const appointments = await db.all('SELECT * FROM appointments ORDER BY date DESC');
+      
+      const authHeader = req.headers.authorization;
+      let isAuthenticated = false;
+      if (authHeader) {
+        try {
+          const token = authHeader.split(' ')[1];
+          const decoded = Buffer.from(token, 'base64').toString();
+          const [username] = decoded.split(':');
+          const user = await db.get('SELECT * FROM users WHERE username = ?', username);
+          if (user) isAuthenticated = true;
+        } catch (e) {}
+      }
+
+      if (isAuthenticated) {
+        res.json(appointments);
+      } else {
+        const publicAppointments = appointments.map(app => ({
+          ...app,
+          clientName: 'Cliente'
+        }));
+        res.json(publicAppointments);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar agendamentos:", error);
+      res.status(500).json({ error: "Erro ao buscar agendamentos" });
+    }
   });
 
   app.post("/api/appointments", async (req, res) => {
@@ -436,25 +462,7 @@ async function startServer() {
     });
   });
 
-  app.get("/api/debug/reset-db", async (req, res) => {
-    try {
-      console.log("Solicitação de reset de banco de dados recebida...");
-      
-      // Clear tables
-      await db.exec("DELETE FROM appointments");
-      await db.exec("DELETE FROM users");
-      await db.exec("DELETE FROM services");
-      await db.exec("DELETE FROM barbers");
-      
-      // Re-seed
-      await seedDb(db);
-      
-      res.json({ message: "Banco de dados resetado e semeado com sucesso!" });
-    } catch (error) {
-      console.error("Erro ao resetar banco:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
+  // Debug reset route removed for security
 
   // Serve static files from the 'dist' directory
   const distPath = path.join(__dirname, "dist");

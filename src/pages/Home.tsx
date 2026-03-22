@@ -5,7 +5,11 @@ import { Calendar, Scissors, Info } from 'lucide-react';
 
 export default function Home() {
   const { scrollY } = useScroll();
-  const y1 = useTransform(scrollY, [0, 500], [0, 200]);
+  
+  // Disable parallax on mobile for better performance
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  
+  const y1 = useTransform(scrollY, [0, 500], [0, isMobile ? 0 : 200]);
   const opacity = useTransform(scrollY, [0, 300], [1, 0]);
 
   return (
@@ -15,10 +19,10 @@ export default function Home() {
         {/* Background with Parallax/Texture */}
         <motion.div className="absolute inset-0 z-0" style={{ y: y1 }}>
           <div className="absolute inset-0 bg-navy-900/75 z-10"></div>
-          {/* Grain overlay - Now visible on mobile with lower opacity */}
-          <div className="absolute inset-0 z-15 opacity-10 md:opacity-20 pointer-events-none" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
+          {/* Grain overlay - Hidden on mobile for performance */}
+          <div className="absolute inset-0 z-15 hidden md:block opacity-20 pointer-events-none" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
           <img 
-            src="https://images.unsplash.com/photo-1503951914875-befbb6470523?q=80&w=2068&auto=format&fit=crop" 
+            src={`https://images.unsplash.com/photo-1503951914875-befbb6470523?q=80&w=${isMobile ? 800 : 2068}&auto=format&fit=crop`} 
             alt="Barbershop Background" 
             className="w-full h-full object-cover"
             loading="eager"
@@ -41,24 +45,28 @@ export default function Home() {
           >
             {/* 3D Logo Effect */}
             <div className="w-40 h-40 md:w-48 md:h-48 mx-auto mb-6 md:mb-8 relative group perspective-1000">
-              {/* Outer Glow Ring - Softer and deeper */}
-              <motion.div 
-                className="absolute inset-[-15px] rounded-full opacity-10 blur-3xl bg-gold-500"
-                animate={{ 
-                  scale: [1, 1.2, 1],
-                  opacity: [0.05, 0.15, 0.05] 
-                }}
-                transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-              />
-
-              {/* Secondary Rotating Ring - Dashed/Technical */}
-              <div className="absolute inset-[-5px] rounded-full border border-gold-500/10 z-0">
+              {/* Outer Glow Ring - Hidden on mobile */}
+              {!isMobile && (
                 <motion.div 
-                  className="absolute inset-0 rounded-full border border-dashed border-gold-500/30"
-                  animate={{ rotate: -360 }}
-                  transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+                  className="absolute inset-[-15px] rounded-full opacity-10 blur-3xl bg-gold-500"
+                  animate={{ 
+                    scale: [1, 1.2, 1],
+                    opacity: [0.05, 0.15, 0.05] 
+                  }}
+                  transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
                 />
-              </div>
+              )}
+
+              {/* Secondary Rotating Ring - Hidden on mobile */}
+              {!isMobile && (
+                <div className="absolute inset-[-5px] rounded-full border border-gold-500/10 z-0">
+                  <motion.div 
+                    className="absolute inset-0 rounded-full border border-dashed border-gold-500/30"
+                    animate={{ rotate: -360 }}
+                    transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+                  />
+                </div>
+              )}
 
               {/* Primary Rotating Border Light */}
               <div className="absolute inset-0 rounded-full z-0">
@@ -74,20 +82,22 @@ export default function Home() {
                 animate={{ 
                   y: [0, -6, 0],
                   // Only do 3D rotation on desktop for better mobile performance
-                  rotateY: typeof window !== 'undefined' && window.innerWidth > 768 ? [0, 6, 0, -6, 0] : 0,
-                  rotateX: typeof window !== 'undefined' && window.innerWidth > 768 ? [0, -4, 0, 4, 0] : 0
+                  rotateY: !isMobile ? [0, 6, 0, -6, 0] : 0,
+                  rotateX: !isMobile ? [0, -4, 0, 4, 0] : 0
                 }}
                 transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
               >
-                {/* Grain overlay for the logo circle */}
-                <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
+                {/* Grain overlay for the logo circle - Hidden on mobile */}
+                <div className="absolute inset-0 hidden md:block opacity-10 pointer-events-none" style={{ backgroundImage: 'var(--background-image-texture)' }}></div>
                 
-                {/* Glint effect - A sharp light sweep */}
-                <motion.div 
-                  className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent -translate-x-full -skew-x-12"
-                  animate={{ translateX: ['200%', '-200%'] }}
-                  transition={{ repeat: Infinity, duration: 4, ease: "easeInOut", repeatDelay: 3 }}
-                />
+                {/* Glint effect - Hidden on mobile */}
+                {!isMobile && (
+                  <motion.div 
+                    className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent -translate-x-full -skew-x-12"
+                    animate={{ translateX: ['200%', '-200%'] }}
+                    transition={{ repeat: Infinity, duration: 4, ease: "easeInOut", repeatDelay: 3 }}
+                  />
+                )}
 
                 {/* Inner Laurel/Wreath border */}
                 <div className="absolute inset-3 border border-gold-500/10 rounded-full flex items-center justify-center">
@@ -197,13 +207,13 @@ export default function Home() {
             <motion.div
               initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, margin: "-100px" }}
               transition={{ duration: 0.8 }}
               className="relative"
             >
               <div className="absolute -inset-4 border-2 border-gold-500/30 rounded-lg transform rotate-3"></div>
               <img 
-                src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=2070&auto=format&fit=crop" 
+                src={`https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=${isMobile ? 800 : 2070}&auto=format&fit=crop`} 
                 alt="Interior Barbearia" 
                 className="rounded-lg shadow-2xl relative z-10 md:grayscale md:hover:grayscale-0 transition-all duration-500"
                 loading="lazy"

@@ -64,7 +64,7 @@ function AppContent() {
       {/* Floating WhatsApp Button - Only on Home Page */}
       {location.pathname === '/' && (
         <a
-          href="https://wa.me/558184361210"
+          href="https://wa.me/5581984361210"
           target="_blank"
           rel="noopener noreferrer"
           className="fixed bottom-6 left-6 z-50 bg-green-500 text-white p-4 rounded-full shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:scale-110 transition-transform duration-300 flex items-center justify-center"
