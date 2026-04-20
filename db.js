@@ -195,6 +195,7 @@ export const initDb = async () => {
           date VARCHAR(255) NOT NULL,
           status VARCHAR(50) DEFAULT 'confirmed',
           price DECIMAL(10, 2) NOT NULL,
+          attended BOOLEAN DEFAULT FALSE,
           INDEX idx_date (date)
         );
 
@@ -270,7 +271,8 @@ export const initDb = async () => {
       barberId TEXT NOT NULL,
       date TEXT NOT NULL,
       status TEXT DEFAULT 'confirmed',
-      price REAL NOT NULL
+      price REAL NOT NULL,
+      attended INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS users (

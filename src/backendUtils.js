@@ -3,7 +3,7 @@ import { LEOMAR_IMAGE, PEDRO_IMAGE } from './assets/backendBarberImages.js';
 export const SERVICES_DATA = [
   { id: '1', name: 'Corte Degradê Social ou Moicano', price: 50, duration: 45, image: 'https://i.postimg.cc/NM66ZV3g/Corte-Degrade-Social-ou-Moicano.webp', description: 'Corte moderno com transição suave nas laterais, ideal para um visual limpo e atual.' },
   { id: '2', name: 'Barba', price: 30, duration: 30, image: 'https://i.postimg.cc/gJVV15f1/Barba.jpg', description: 'Design de barba com navalha, toalha quente e produtos que hidratam e acalmam a pele.' },
-  { id: '3', name: 'Corte + Barba Premium', price: 50, duration: 75, image: 'https://i.postimg.cc/pTff37gg/Cabelo-Barba.jpg', description: 'O combo clássico para renovar seu visual por completo com a qualidade Imperial.' },
+  { id: '3', name: 'Corte + Barba Premium', price: 50, duration: 75, image: 'https://i.postimg.cc/pTff37gg/Cabelo-Barba.jpg', description: 'O combo clássico para renovar seu visual por completo com a qualidade Imperial Barbearia.' },
   { id: '4', name: 'Cabelo + Barba + Sobrancelha', price: 95, duration: 90, image: 'https://i.postimg.cc/50BBDGhd/Cabelo-Barba-Sobrancelha.jpg', description: 'Tratamento completo de visagismo facial para quem não abre mão da perfeição.' },
   { id: '5', name: 'Barba Pigmentada', price: 40, duration: 40, image: 'https://i.postimg.cc/85RRx3q0/Barba-Pigmentada.jpg', description: 'Realce o contorno e preencha falhas da sua barba com nossa técnica de pigmentação natural.' },
   { id: '6', name: 'Pezinho', price: 15, duration: 15, image: 'https://i.postimg.cc/D07rh6h2/Pezinho.jpg', description: 'Manutenção rápida do contorno do cabelo para manter o visual sempre em dia.' },

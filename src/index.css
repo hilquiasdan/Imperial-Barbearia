@@ -4,10 +4,10 @@
   --font-serif: "Cinzel", serif;
   --font-sans: "Montserrat", sans-serif;
   
-  --color-gold-300: #F9E59E;
-  --color-gold-400: #E6C200;
-  --color-gold-500: #C5A059; /* More metallic/bronze gold from image */
-  --color-gold-600: #997B36;
+  --color-gold-300: #D9C5A2;
+  --color-gold-400: #C4A473;
+  --color-gold-500: #B59049; /* Imperial Gold - More Matte/Sophisticated */
+  --color-gold-600: #967034;
   
   --color-navy-800: #162a47;
   --color-navy-900: #0B1D35; /* Matching the deep blue background */
@@ -76,7 +76,7 @@
 
   .shimmer-btn::after {
     content: "";
-    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000;
+    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-1000;
   }
 
   .shimmer-btn:hover::after {

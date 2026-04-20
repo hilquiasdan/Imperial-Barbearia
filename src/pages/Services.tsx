@@ -109,29 +109,46 @@ export default function Services() {
         )}
 
         {/* Benefits Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-12 md:mb-20">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-12 md:mb-20"
+        >
           {[
             { icon: <Coffee size={18} />, text: "Café" },
             { icon: <Beer size={18} />, text: "Cerveja" },
             { icon: <Sparkles size={18} />, text: "Toalha" },
             { icon: <Star size={18} />, text: "Premium" },
           ].map((item, i) => (
-            <div key={i} className="flex items-center justify-center gap-2 md:gap-3 py-3 md:py-4 px-2 md:px-6 rounded-xl bg-white/5 border border-white/5 text-gray-300 text-[10px] md:text-sm font-medium">
-              <span className="text-gold-500">{item.icon}</span>
+            <motion.div 
+              key={i} 
+              whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.08)" }}
+              className="flex items-center justify-center gap-2 md:gap-3 py-3 md:py-4 px-2 md:px-6 rounded-xl bg-white/5 border border-white/5 text-gray-300 text-[10px] md:text-sm font-medium transition-colors"
+            >
+              <motion.span 
+                animate={{ rotate: [0, 5, -5, 0] }}
+                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut", delay: i * 0.5 }}
+                className="text-gold-500"
+              >
+                {item.icon}
+              </motion.span>
               {item.text}
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-8">
           {services.map((service, index) => (
             <motion.div
               key={service.id}
-              initial={{ opacity: 0, x: index % 2 === 0 ? -30 : 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              whileHover={{ scale: 1.01, translateY: -5 }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="glass-panel group p-1"
+              className="glass-panel group p-1 transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-gold-500/30"
             >
               <div className="flex flex-col md:flex-row h-full">
                 {/* Image/Icon Section */}

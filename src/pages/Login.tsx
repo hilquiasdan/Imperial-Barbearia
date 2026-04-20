@@ -61,39 +61,63 @@ export default function Login() {
             </div>
           )}
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-400 uppercase tracking-wider ml-1">Usuário</label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gold-500">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="space-y-2 group"
+          >
+            <label className="text-sm font-medium text-gray-400 uppercase tracking-wider ml-1 group-focus-within:text-gold-500 transition-colors group-focus-within:animate-pulse">Usuário</label>
+            <motion.div 
+              whileFocus={{ scale: 1.01 }}
+              className="relative"
+            >
+              <motion.div 
+                animate={{ y: [0, -1, 0] }}
+                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gold-500"
+              >
                 <User size={20} />
-              </div>
+              </motion.div>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
-                className="w-full bg-navy-900 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-all"
+                className="w-full bg-navy-900 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-all focus:shadow-[0_0_20px_rgba(212,175,55,0.15)]"
                 placeholder="Digite seu usuário"
               />
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-400 uppercase tracking-wider ml-1">Senha</label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gold-500">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-2 group"
+          >
+            <label className="text-sm font-medium text-gray-400 uppercase tracking-wider ml-1 group-focus-within:text-gold-500 transition-colors group-focus-within:animate-pulse">Senha</label>
+            <motion.div 
+              whileFocus={{ scale: 1.01 }}
+              className="relative"
+            >
+              <motion.div 
+                animate={{ y: [0, -1, 0] }}
+                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut", delay: 0.5 }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gold-500"
+              >
                 <Lock size={20} />
-              </div>
+              </motion.div>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
-                className="w-full bg-navy-900 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-all"
+                className="w-full bg-navy-900 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-all focus:shadow-[0_0_20px_rgba(212,175,55,0.15)]"
                 placeholder="Digite sua senha"
               />
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           <motion.button
             whileTap={{ scale: 0.98 }}

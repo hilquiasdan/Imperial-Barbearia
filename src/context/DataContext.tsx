@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SERVICES_DATA as INITIAL_SERVICES, BARBERS as INITIAL_BARBERS } from '../utils';
 import { useAuth } from './AuthContext';
+import { parseISO, format } from 'date-fns';
 
 export interface Service {
   id: string;
@@ -27,6 +28,7 @@ export interface Appointment {
   date: string; // ISO string
   status: 'confirmed' | 'cancelled';
   price: number;
+  attended?: boolean;
 }
 
 interface DataContextType {
@@ -44,6 +46,7 @@ interface DataContextType {
   cancelAppointment: (id: string) => Promise<boolean>;
   deleteAppointment: (id: string) => Promise<boolean>;
   deleteAppointmentsByMonth: (month: string) => Promise<boolean>;
+  toggleAttended: (id: string) => Promise<void>;
   getBarberName: (id: string) => string;
   getServiceName: (id: string) => string;
 }
@@ -88,6 +91,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchData();
+
+    // Set up polling for appointments every 30 seconds
+    const intervalId = setInterval(async () => {
+      try {
+        const appointmentsRes = await fetch('/api/appointments', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (appointmentsRes.ok) {
+          const newAppointments = await appointmentsRes.json();
+          setAppointments(newAppointments);
+        }
+      } catch (error) {
+        console.error("Error polling appointments:", error);
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(intervalId);
   }, [token, isAuthenticated]);
 
   const addService = async (service: Omit<Service, 'id'>) => {
@@ -283,7 +303,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
       if (response.ok) {
         setAppointments(prev => prev.filter(a => 
-          !new Date(a.date).toISOString().startsWith(month)
+          !format(parseISO(a.date), 'yyyy-MM').startsWith(month)
         ));
         return true;
       }
@@ -291,6 +311,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Error deleting appointments by month:", error);
       return false;
+    }
+  };
+
+  const toggleAttended = async (id: string) => {
+    const appointment = appointments.find(a => a.id === id);
+    if (!appointment) return;
+    
+    const updatedAttended = !appointment.attended;
+    
+    try {
+      const response = await fetch(`/api/appointments/${id}`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ attended: updatedAttended })
+      });
+      
+      if (response.ok) {
+        setAppointments(prev => prev.map(a => 
+          a.id === id ? { ...a, attended: updatedAttended } : a
+        ));
+      }
+    } catch (error) {
+      console.error("Error toggling attended status:", error);
     }
   };
 
@@ -313,6 +359,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       cancelAppointment,
       deleteAppointment,
       deleteAppointmentsByMonth,
+      toggleAttended,
       getBarberName,
       getServiceName
     }}>

@@ -1,0 +1,8 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" rx="16" fill="#0b1d35"/>
+  <text x="16" y="26" text-anchor="middle" fill="#d4af37" style="font-family: 'Times New Roman', serif; font-weight: bold; font-size: 22px;">I</text>
+  <g transform="translate(8, 2) scale(0.65)">
+    <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" fill="#d4af37" />
+    <path d="M5 18H19V20H5V18Z" fill="#d4af37" />
+  </g>
+</svg>

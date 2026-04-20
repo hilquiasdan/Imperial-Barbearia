@@ -106,7 +106,7 @@ export default function Home() {
                 
                 <div className="text-center z-10 transform group-hover:scale-105 transition-transform duration-1000">
                   <div className="text-gold-500 text-6xl md:text-7xl font-serif font-bold relative">
-                    <span className="relative z-10 drop-shadow-[0_0_20px_rgba(212,175,55,0.8)]">I</span>
+                    <span translate="no" className="relative z-10 drop-shadow-[0_0_20px_rgba(212,175,55,0.8)] notranslate">I</span>
                     
                     {/* Crown with more elegant float */}
                     <motion.div 
@@ -147,9 +147,15 @@ export default function Home() {
             <div className="flex flex-col md:flex-row items-center justify-center gap-6">
               <Link to="/agendar">
                 <motion.button
-                  whileHover={{ scale: 1.05, translateY: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-10 py-4 gold-gradient-depth text-navy-900 font-bold rounded-sm uppercase tracking-widest hover:brightness-110 transition-all shadow-[0_10px_30px_rgba(212,175,55,0.4)] flex items-center gap-3 shimmer-btn"
+                  whileHover={{ 
+                    scale: 1.02, 
+                    translateY: -2, 
+                    boxShadow: "0 10px 25px rgba(197, 160, 89, 0.3)",
+                    filter: "brightness(1.05)"
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  className="px-10 py-4 gold-gradient-depth text-navy-900 font-bold rounded-sm uppercase tracking-widest transition-all shadow-[0_8px_20px_rgba(0,0,0,0.3)] flex items-center gap-3 shimmer-btn"
                 >
                   <Calendar size={20} />
                   Agendar Horário
@@ -158,8 +164,14 @@ export default function Home() {
               
               <Link to="/servicos">
                 <motion.button
-                  whileHover={{ scale: 1.05, translateY: -2 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ 
+                    scale: 1.02, 
+                    translateY: -2, 
+                    backgroundColor: "rgba(197, 160, 89, 0.08)",
+                    borderColor: "rgba(197, 160, 89, 0.6)"
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   className="px-10 py-4 bg-transparent border-2 border-gold-500/50 text-gold-500 font-bold rounded-sm uppercase tracking-widest hover:bg-gold-500/10 hover:border-gold-500 transition-all flex items-center gap-3"
                 >
                   <Scissors size={20} />
@@ -187,12 +199,12 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
             >
-              <h3 className="text-gold-500 text-lg uppercase tracking-widest mb-2">Bem-vindo à Imperial</h3>
+              <h3 className="text-gold-500 text-lg uppercase tracking-widest mb-2">Bem-vindo à Imperial Barbearia</h3>
               <h2 className="text-4xl font-serif text-white mb-6">A Arte de Cuidar da Sua Imagem</h2>
               <p className="text-gray-400 leading-relaxed mb-6">
                 Na Imperial Barbearia, não vendemos apenas cortes de cabelo, entregamos confiança e estilo. 
@@ -205,10 +217,10 @@ export default function Home() {
             </motion.div>
             
             <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              whileInView={{ opacity: 1, scale: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8 }}
+              transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
               className="relative"
             >
               <div className="absolute -inset-4 border-2 border-gold-500/30 rounded-lg transform rotate-3"></div>

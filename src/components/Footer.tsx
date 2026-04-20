@@ -12,7 +12,7 @@ export default function Footer() {
           <div className="col-span-1">
             <Link to="/" className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 flex items-center justify-center border border-gold-500 rounded-full bg-navy-800">
-                <span className="font-serif text-xl text-gold-500 font-bold">I</span>
+                <span translate="no" className="font-serif text-xl text-gold-500 font-bold notranslate">I</span>
               </div>
               <div className="flex flex-col">
                 <span className="font-serif text-xl text-white font-bold tracking-widest leading-none">

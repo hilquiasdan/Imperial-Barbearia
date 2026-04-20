@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { format, addDays, startOfToday, setHours, setMinutes, isBefore, isEqual } from 'date-fns';
+import { format, addDays, startOfToday, setHours, setMinutes, isBefore, isEqual, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   Calendar as CalendarIcon, 
@@ -51,11 +51,11 @@ export default function Booking() {
         .filter(appt => {
           if (appt.status === 'cancelled') return false;
           if (appt.barberId !== selectedBarber) return false;
-          const apptDate = new Date(appt.date);
+          const apptDate = parseISO(appt.date);
           return isEqual(startOfToday(), startOfToday()) && // This is just to trigger re-render if needed
                  format(apptDate, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
         })
-        .map(appt => format(new Date(appt.date), 'HH:mm'))
+        .map(appt => format(parseISO(appt.date), 'HH:mm'))
     );
   }, [appointments, selectedBarber, selectedDate]);
 
@@ -151,7 +151,7 @@ export default function Booking() {
             >
               <ChevronLeft size={20} /> <span className="hidden sm:inline">Voltar ao Início</span>
             </button>
-            <div className="w-10 h-10 rounded-xl bg-gold-500/10 flex items-center justify-center text-gold-500 font-bold border border-gold-500/20">I</div>
+            <div className="w-10 h-10 rounded-xl bg-gold-500/10 flex items-center justify-center text-gold-500 font-bold border border-gold-500/20">M</div>
             <div className="w-20"></div> {/* Spacer */}
           </div>
 
@@ -528,7 +528,7 @@ export default function Booking() {
                   {/* Ticket Header */}
                   <div className="bg-navy-900 p-4 md:p-6 text-center border-b-4 border-gold-500 relative overflow-hidden">
                     <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-                    <h3 className="text-gold-500 font-serif text-xl md:text-2xl font-bold tracking-widest">IMPERIAL</h3>
+                    <h3 className="text-gold-500 font-serif text-xl md:text-2xl font-bold tracking-widest uppercase">Imperial</h3>
                     <p className="text-gray-400 text-[10px] md:text-xs uppercase tracking-[0.3em]">Barbearia</p>
                   </div>
                   
@@ -592,23 +592,45 @@ export default function Booking() {
                   </div>
 
                   <div className="space-y-5">
-                    <div className="group">
-                      <label className="block text-sm text-gold-500 mb-2 ml-1 font-medium uppercase tracking-wider">Seu Nome</label>
-                      <div className="relative">
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="group"
+                    >
+                      <label className="block text-sm text-gold-500 mb-2 ml-1 font-medium uppercase tracking-wider group-focus-within:animate-pulse">Seu Nome</label>
+                      <motion.div 
+                        whileFocus={{ scale: 1.01 }}
+                        className="relative"
+                      >
                         <input 
                           type="text" 
                           value={customerName}
                           onChange={(e) => setCustomerName(e.target.value)}
-                          className="w-full bg-navy-900/50 border border-white/10 rounded-xl p-4 pl-12 text-white focus:border-gold-500 focus:bg-navy-900 focus:outline-none transition-all focus:shadow-[0_0_20px_rgba(212,175,55,0.1)]"
+                          className="w-full bg-navy-900/50 border border-white/10 rounded-xl p-4 pl-12 text-white focus:border-gold-500 focus:bg-navy-900 focus:outline-none transition-all focus:shadow-[0_0_20px_rgba(212,175,55,0.2)]"
                           placeholder="Digite seu nome completo"
                         />
-                        <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 group-focus-within:text-gold-500 transition-colors" size={20} />
-                      </div>
-                    </div>
+                        <motion.div
+                          animate={{ y: [0, -2, 0] }}
+                          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2"
+                        >
+                          <User className="text-gray-500 group-focus-within:text-gold-500 transition-colors" size={20} />
+                        </motion.div>
+                      </motion.div>
+                    </motion.div>
                     
-                    <div className="group">
-                      <label className="block text-sm text-gold-500 mb-2 ml-1 font-medium uppercase tracking-wider">Seu WhatsApp</label>
-                      <div className="relative">
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="group"
+                    >
+                      <label className="block text-sm text-gold-500 mb-2 ml-1 font-medium uppercase tracking-wider group-focus-within:animate-pulse">Seu WhatsApp</label>
+                      <motion.div 
+                        whileFocus={{ scale: 1.01 }}
+                        className="relative"
+                      >
                         <input 
                           type="tel" 
                           value={customerPhone}
@@ -623,15 +645,19 @@ export default function Booking() {
                             
                             setCustomerPhone(masked);
                           }}
-                          className="w-full bg-navy-900/50 border border-white/10 rounded-xl p-4 pl-12 text-white focus:border-gold-500 focus:bg-navy-900 focus:outline-none transition-all focus:shadow-[0_0_20px_rgba(212,175,55,0.1)]"
+                          className="w-full bg-navy-900/50 border border-white/10 rounded-xl p-4 pl-12 text-white focus:border-gold-500 focus:bg-navy-900 focus:outline-none transition-all focus:shadow-[0_0_20px_rgba(212,175,55,0.2)]"
                           placeholder="(00) 00000-0000"
                           maxLength={15}
                         />
-                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 group-focus-within:text-gold-500 transition-colors">
+                        <motion.div 
+                          animate={{ y: [0, -2, 0] }}
+                          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut", delay: 0.5 }}
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 group-focus-within:text-gold-500 transition-colors"
+                        >
                           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                        </div>
-                      </div>
-                    </div>
+                        </motion.div>
+                      </motion.div>
+                    </motion.div>
                   </div>
                 </div>
               </motion.div>
@@ -643,7 +669,9 @@ export default function Booking() {
           {/* Navigation Buttons */}
           {activeTab === 'new' && (
             <div className="mt-8 md:mt-12 flex flex-col sm:flex-row justify-between pt-6 md:pt-8 border-t border-white/5 gap-4">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handleBack}
                 disabled={step === 1}
                 className={cn(
@@ -652,29 +680,41 @@ export default function Booking() {
                 )}
               >
                 <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> Voltar
-              </button>
+              </motion.button>
 
               {step < 4 ? (
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
+                  whileHover={{ 
+                    scale: 1.02, 
+                    translateY: -2, 
+                    boxShadow: "0 10px 25px rgba(197, 160, 89, 0.3)",
+                    filter: "brightness(1.05)"
+                  }}
                   whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   onClick={handleNext}
                   disabled={
                     (step === 1 && !selectedBarber) ||
                     (step === 2 && !selectedService) ||
                     (step === 3 && !selectedTime)
                   }
-                  className="px-8 md:px-10 py-4 bg-gold-500 text-navy-900 rounded-xl font-bold hover:bg-gold-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:shadow-[0_0_30px_rgba(212,175,55,0.5)] order-1 sm:order-2"
+                  className="px-8 md:px-10 py-4 bg-gold-500 text-navy-900 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-[0_8px_20px_rgba(0,0,0,0.3)] order-1 sm:order-2"
                 >
                   Próximo Passo <ChevronRight size={20} />
                 </motion.button>
               ) : (
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
+                  whileHover={{ 
+                    scale: 1.02, 
+                    translateY: -2, 
+                    boxShadow: "0 10px 25px rgba(22, 163, 74, 0.3)",
+                    filter: "brightness(1.05)"
+                  }}
                   whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   onClick={handleConfirm}
                   disabled={!customerName || !customerPhone}
-                  className="px-8 md:px-10 py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)] order-1 sm:order-2"
+                  className="px-8 md:px-10 py-4 bg-green-600 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-[0_8px_20px_rgba(0,0,0,0.3)] order-1 sm:order-2"
                 >
                   Confirmar Agendamento <CheckCircle size={20} />
                 </motion.button>
@@ -775,12 +815,14 @@ function ClientPortal() {
           />
           <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500" size={20} />
         </div>
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={handleSearch}
           className="px-8 py-4 bg-gold-500 text-navy-900 rounded-xl font-bold hover:bg-gold-400 transition-all shadow-lg"
         >
           Consultar
-        </button>
+        </motion.button>
       </div>
 
       <AnimatePresence mode="wait">
@@ -811,10 +853,10 @@ function ClientPortal() {
                     <p className="text-gray-400 text-sm">{getBarberName(appt.barberId)}</p>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-xs text-gold-500 font-medium flex items-center gap-1">
-                        <CalendarIcon size={12} /> {format(new Date(appt.date), "dd/MM/yyyy", { locale: ptBR })}
+                        <CalendarIcon size={12} /> {format(parseISO(appt.date), "dd/MM/yyyy", { locale: ptBR })}
                       </span>
                       <span className="text-xs text-gold-500 font-medium flex items-center gap-1">
-                        <Clock size={12} /> {format(new Date(appt.date), "HH:mm", { locale: ptBR })}
+                        <Clock size={12} /> {format(parseISO(appt.date), "HH:mm", { locale: ptBR })}
                       </span>
                     </div>
                   </div>

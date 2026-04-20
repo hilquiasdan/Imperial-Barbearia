@@ -21,7 +21,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '../utils';
 
 export default function Admin() {
-  const { logout, user } = useAuth();
+  const { logout, user, token } = useAuth();
   const { 
     appointments, services, barbers, 
     cancelAppointment, deleteAppointment, deleteAppointmentsByMonth,
@@ -43,33 +43,74 @@ export default function Admin() {
   const [selectedHistoryMonth, setSelectedHistoryMonth] = useState(new Date().toISOString().slice(0, 7));
   
   // Calendar & Filter States
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [selectedBarberFilter, setSelectedBarberFilter] = useState<string>('all');
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
+  const [selectedListDate, setSelectedListDate] = useState(new Date());
+
+  const { toggleAttended } = useData();
+
+  // --- PWA Install Logic ---
+  const [canInstall, setCanInstall] = useState(!!(window as any).deferredPrompt);
+
+  useEffect(() => {
+    const handleInstallReady = () => setCanInstall(true);
+    window.addEventListener('pwa-install-ready', handleInstallReady);
+    return () => window.removeEventListener('pwa-install-ready', handleInstallReady);
+  }, []);
+
+  const handleInstall = async () => {
+    const promptEvent = (window as any).deferredPrompt;
+    if (!promptEvent) return;
+    
+    promptEvent.prompt();
+    const { outcome } = await promptEvent.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    
+    (window as any).deferredPrompt = null;
+    setCanInstall(false);
+  };
 
   // --- Dashboard Logic ---
   const dashboardMetrics = useMemo(() => {
     const activeAppointments = filteredAppointments.filter(a => a.status !== 'cancelled');
-    const totalRevenue = activeAppointments.reduce((sum, a) => sum + a.price, 0);
-    const totalAppointments = activeAppointments.length;
+    const now = new Date();
+    
+    // Filter by period
+    const periodAppointments = activeAppointments.filter(a => {
+      const d = parseISO(a.date);
+      if (chartPeriod === 'day') {
+        return isSameDay(d, now);
+      } else if (chartPeriod === 'week') {
+        const start = startOfWeek(now, { weekStartsOn: 0 });
+        const end = endOfWeek(now, { weekStartsOn: 0 });
+        return d >= start && d <= end;
+      } else if (chartPeriod === 'month') {
+        return isSameMonth(d, now);
+      }
+      return true;
+    });
+
+    const totalRevenue = periodAppointments.reduce((sum, a) => sum + a.price, 0);
+    const totalAppointments = periodAppointments.length;
     const averageTicket = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
 
-    const today = new Date();
-    const todayAppointments = activeAppointments.filter(a => {
-      const d = new Date(a.date);
-      return d.getDate() === today.getDate() && 
-             d.getMonth() === today.getMonth() && 
-             d.getFullYear() === today.getFullYear();
-    });
+    const todayAppointments = activeAppointments.filter(a => isSameDay(parseISO(a.date), now));
+    const periodAttended = periodAppointments.filter(a => a.attended).length;
+
+    const periodLabel = chartPeriod === 'day' ? 'Hoje' : chartPeriod === 'week' ? 'Esta Semana' : 'Este Mês';
 
     return {
       totalRevenue,
       totalAppointments,
       averageTicket,
       todayCount: todayAppointments.length,
-      todayRevenue: todayAppointments.reduce((sum, a) => sum + a.price, 0)
+      todayRevenue: todayAppointments.reduce((sum, a) => sum + a.price, 0),
+      todayAttended: todayAppointments.filter(a => a.attended).length,
+      periodAttended,
+      periodLabel
     };
-  }, [filteredAppointments]);
+  }, [filteredAppointments, chartPeriod]);
 
   const chartData = useMemo(() => {
     const groupedData: Record<string, { [key: string]: any }> = {};
@@ -77,14 +118,43 @@ export default function Admin() {
     // Sort appointments by date
     const sortedApps = [...filteredAppointments]
       .filter(a => a.status !== 'cancelled')
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
     // If period is month, pre-fill all months of the current year
     if (chartPeriod === 'month') {
       const currentYear = new Date().getFullYear();
       for (let i = 1; i <= 12; i++) {
         const date = new Date(currentYear, i - 1);
-        const key = date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+        const key = format(date, 'MMM', { locale: ptBR });
+        groupedData[key] = { date: key };
+        barbers.forEach(b => {
+          groupedData[key][b.name.toLowerCase()] = 0;
+        });
+      }
+    }
+
+    // If period is day, pre-fill last 7 days
+    if (chartPeriod === 'day') {
+      const now = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        const key = format(date, 'dd/MM');
+        groupedData[key] = { date: key };
+        barbers.forEach(b => {
+          groupedData[key][b.name.toLowerCase()] = 0;
+        });
+      }
+    }
+
+    // If period is week, pre-fill last 4 weeks
+    if (chartPeriod === 'week') {
+      const now = new Date();
+      for (let i = 3; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - (i * 7));
+        const start = startOfWeek(date, { weekStartsOn: 0 });
+        const key = `Sem ${format(start, 'dd/MM')}`;
         groupedData[key] = { date: key };
         barbers.forEach(b => {
           groupedData[key][b.name.toLowerCase()] = 0;
@@ -93,32 +163,23 @@ export default function Admin() {
     }
 
     sortedApps.forEach(app => {
-      const appDate = new Date(app.date);
+      const appDate = parseISO(app.date);
       let key = '';
 
       if (chartPeriod === 'day') {
-        key = appDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        key = format(appDate, 'dd/MM');
       } else if (chartPeriod === 'week') {
-        const day = appDate.getDay();
-        const diff = appDate.getDate() - day + (day === 0 ? -6 : 1); 
-        const monday = new Date(appDate);
-        monday.setDate(diff);
-        key = `Sem ${monday.getDate()}/${monday.getMonth() + 1}`;
+        const start = startOfWeek(appDate, { weekStartsOn: 0 });
+        key = `Sem ${format(start, 'dd/MM')}`;
       } else {
-        key = appDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+        key = format(appDate, 'MMM', { locale: ptBR });
       }
 
-      if (!groupedData[key]) {
-        groupedData[key] = { date: key };
-        // Initialize all barbers with 0
-        barbers.forEach(b => {
-          groupedData[key][b.name.toLowerCase()] = 0;
-        });
-      }
-
-      const barberName = getBarberName(app.barberId).toLowerCase();
-      if (groupedData[key][barberName] !== undefined) {
-        groupedData[key][barberName] += app.price;
+      if (groupedData[key]) {
+        const barberName = getBarberName(app.barberId).toLowerCase();
+        if (groupedData[key][barberName] !== undefined) {
+          groupedData[key][barberName] += app.price;
+        }
       }
     });
 
@@ -126,18 +187,11 @@ export default function Admin() {
     
     // Sort by date if it's month view to ensure Jan-Dec order
     if (chartPeriod === 'month') {
-      return result.sort((a, b) => {
-        const [mA, yA] = a.date.split(' de ');
-        const [mB, yB] = b.date.split(' de ');
-        const months = ['jan.', 'fev.', 'mar.', 'abr.', 'mai.', 'jun.', 'jul.', 'ago.', 'set.', 'out.', 'nov.', 'dez.'];
-        const yearA = parseInt(yA);
-        const yearB = parseInt(yB);
-        if (yearA !== yearB) return yearA - yearB;
-        return months.indexOf(mA) - months.indexOf(mB);
-      });
+      const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      return result.sort((a, b) => months.indexOf(a.date) - months.indexOf(b.date));
     }
     
-    return result.slice(-7);
+    return result;
   }, [filteredAppointments, chartPeriod, getBarberName, barbers]);
 
   const pieData = useMemo(() => {
@@ -148,8 +202,21 @@ export default function Admin() {
       color: colors[i % colors.length]
     }));
 
-    filteredAppointments.forEach(app => {
-      if (app.status === 'cancelled') return;
+    const now = new Date();
+    const periodAppointments = filteredAppointments.filter(app => {
+      if (app.status === 'cancelled') return false;
+      const d = parseISO(app.date);
+      if (chartPeriod === 'day') return isSameDay(d, now);
+      if (chartPeriod === 'week') {
+        const start = startOfWeek(now, { weekStartsOn: 0 });
+        const end = endOfWeek(now, { weekStartsOn: 0 });
+        return d >= start && d <= end;
+      }
+      if (chartPeriod === 'month') return isSameMonth(d, now);
+      return true;
+    });
+
+    periodAppointments.forEach(app => {
       const barberIndex = barbers.findIndex(b => b.id === app.barberId);
       if (barberIndex !== -1) {
         data[barberIndex].value += app.price;
@@ -157,12 +224,12 @@ export default function Admin() {
     });
 
     return data.filter(d => d.value > 0);
-  }, [filteredAppointments, barbers]);
+  }, [filteredAppointments, barbers, chartPeriod]);
 
   const exportCSV = () => {
     const headers = ['Data', 'Cliente', 'Serviço', 'Barbeiro', 'Valor', 'Status'];
     const rows = filteredAppointments.map(app => [
-      new Date(app.date).toLocaleDateString(),
+      format(parseISO(app.date), 'dd/MM/yyyy'),
       app.clientName,
       getServiceName(app.serviceId),
       getBarberName(app.barberId),
@@ -187,12 +254,15 @@ export default function Admin() {
   const filteredAppointmentsList = useMemo(() => {
     let list = filteredAppointments.filter(a => a.status !== 'cancelled');
     
+    // Filter by selected date for list view
+    list = list.filter(a => isSameDay(parseISO(a.date), selectedListDate));
+
     if (selectedBarberFilter !== 'all') {
       list = list.filter(a => a.barberId === selectedBarberFilter);
     }
     
-    return list.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [filteredAppointments, selectedBarberFilter]);
+    return list.sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+  }, [filteredAppointments, selectedBarberFilter, selectedListDate]);
 
   const calendarDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentCalendarDate), { weekStartsOn: 0 });
@@ -202,21 +272,27 @@ export default function Admin() {
 
   const appointmentsByDay = useMemo(() => {
     const map: Record<string, Appointment[]> = {};
-    filteredAppointmentsList.forEach(app => {
-      const dayKey = format(new Date(app.date), 'yyyy-MM-dd');
+    // Use filteredAppointments (filtered by barber but NOT by day) for the calendar view
+    const calendarList = filteredAppointments.filter(a => 
+      a.status !== 'cancelled' && 
+      (selectedBarberFilter === 'all' || a.barberId === selectedBarberFilter)
+    );
+    
+    calendarList.forEach(app => {
+      const dayKey = format(parseISO(app.date), 'yyyy-MM-dd');
       if (!map[dayKey]) map[dayKey] = [];
       map[dayKey].push(app);
     });
     return map;
-  }, [filteredAppointmentsList]);
+  }, [filteredAppointments, selectedBarberFilter]);
 
   const historyAppointments = useMemo(() => {
     return filteredAppointments
       .filter(app => {
-        const appMonth = new Date(app.date).toISOString().slice(0, 7);
+        const appMonth = format(parseISO(app.date), 'yyyy-MM');
         return appMonth === selectedHistoryMonth;
       })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
   }, [filteredAppointments, selectedHistoryMonth]);
 
   const availableMonths = useMemo(() => {
@@ -230,7 +306,7 @@ export default function Admin() {
     
     // Also add months from appointments (in case they are from other years)
     filteredAppointments.forEach(app => {
-      months.add(new Date(app.date).toISOString().slice(0, 7));
+      months.add(format(parseISO(app.date), 'yyyy-MM'));
     });
     
     return Array.from(months).sort().reverse();
@@ -259,35 +335,60 @@ export default function Admin() {
       return;
     }
 
-    // 1. Prepare WhatsApp notification
-    let cleanedPhone = app.clientPhone.replace(/\D/g, '');
-    
-    // Remove leading zero if present (common in Brazil)
-    if (cleanedPhone.startsWith('0')) {
-      cleanedPhone = cleanedPhone.substring(1);
+    try {
+      // 1. Prepare WhatsApp notification
+      const clientPhone = app.clientPhone || '';
+      let cleanedPhone = clientPhone.replace(/\D/g, '');
+      
+      // Remove leading zero if present (common in Brazil)
+      if (cleanedPhone.startsWith('0')) {
+        cleanedPhone = cleanedPhone.substring(1);
+      }
+      
+      // Ensure 55 prefix for Brazil
+      let phoneWithCountry = cleanedPhone;
+      if (cleanedPhone.length > 0 && !cleanedPhone.startsWith('55')) {
+        phoneWithCountry = `55${cleanedPhone}`;
+      }
+      
+      const dateObj = parseISO(app.date);
+      const dateStr = dateObj.toLocaleDateString('pt-BR');
+      const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      
+      const serviceName = getServiceName(app.serviceId);
+      const barberName = getBarberName(app.barberId);
+      
+    const message = `*IMPERIAL BARBEARIA*\n\nPrezado(a) *${app.clientName}*,\n\nLamentamos informar que seu agendamento de *${serviceName}* com o profissional *${barberName}* para o dia ${dateStr} às ${timeStr} precisou ser cancelado.\n\nPedimos sinceras desculpas pelo inconveniente. Gostaríamos de convidá-lo(a) a realizar um novo agendamento através do nosso site.\n\nAtenciosamente,\n*Equipe Imperial Barbearia*`;
+      
+      const whatsappUrl = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`;
+      
+      // 2. Delete from database first to ensure it's gone
+      console.log(`Cancelando e excluindo agendamento: ${app.id}`);
+      const deleted = await deleteAppointment(app.id);
+      
+      if (deleted) {
+        console.log('Agendamento excluído com sucesso do banco de dados.');
+        // 3. Open WhatsApp
+        const win = window.open(whatsappUrl, '_blank');
+        if (!win) {
+          console.log('window.open bloqueado, tentando fallback com link temporário...');
+          // If popup is blocked, we use a temporary link to avoid navigating the whole app
+          const link = document.createElement('a');
+          link.href = whatsappUrl;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+        alert('Agendamento cancelado e excluído com sucesso!');
+      } else {
+        alert("Erro ao excluir o agendamento. Por favor, tente novamente.");
+      }
+    } catch (error) {
+      console.error("Erro ao processar cancelamento:", error);
+      alert("Ocorreu um erro ao processar o cancelamento.");
     }
-    
-    // Ensure 55 prefix for Brazil
-    let phoneWithCountry = cleanedPhone;
-    if (cleanedPhone.length > 0 && !cleanedPhone.startsWith('55')) {
-      phoneWithCountry = `55${cleanedPhone}`;
-    }
-    
-    const dateStr = new Date(app.date).toLocaleDateString('pt-BR');
-    const timeStr = new Date(app.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    
-    const message = `*IMPERIAL BARBEARIA*\n\nPrezado(a) *${app.clientName}*,\n\nLamentamos informar que seu agendamento de *${getServiceName(app.serviceId)}* com o profissional *${getBarberName(app.barberId)}* para o dia ${dateStr} às ${timeStr} precisou ser cancelado.\n\nPedimos sinceras desculpas pelo inconveniente. Gostaríamos de convidá-lo(a) a realizar um novo agendamento através do nosso site.\n\nAtenciosamente,\n*Equipe Imperial Barbearia*`;
-    
-    const whatsappUrl = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`;
-    
-    // 2. Open WhatsApp
-    const win = window.open(whatsappUrl, '_blank');
-    if (!win) {
-      window.location.href = whatsappUrl;
-    }
-    
-    // 3. Delete from database (to "exclude" it as requested)
-    await deleteAppointment(app.id);
   };
 
   // --- Services Logic ---
@@ -320,12 +421,44 @@ export default function Admin() {
     setEditingBarber(null);
   };
 
+  const handleExportMonthlyReport = async (month: string) => {
+    try {
+      const response = await fetch(`/api/reports/export/${month}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio-imperial-${month}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const error = await response.json();
+        alert(error.error || "Erro ao exportar relatório.");
+      }
+    } catch (error) {
+      console.error("Error exporting report:", error);
+      alert("Erro de rede ao exportar relatório.");
+    }
+  };
+
   const [monthlyStats, setMonthlyStats] = useState<{ month: string, totalCuts: number, totalRevenue: number }[]>([]);
 
   useEffect(() => {
     const fetchMonthlyStats = async () => {
       try {
-        const response = await fetch('/api/stats/monthly');
+        const response = await fetch('/api/stats/monthly', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (response.ok) {
           setMonthlyStats(await response.json());
         }
@@ -337,7 +470,7 @@ export default function Admin() {
     if (activeTab === 'dashboard' || activeTab === 'reports') {
       fetchMonthlyStats();
     }
-  }, [activeTab, appointments]);
+  }, [activeTab, appointments, token]);
 
   const menuItems = useMemo(() => {
     const items = [
@@ -362,6 +495,8 @@ export default function Admin() {
     }
   }, [user]);
 
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
   return (
     <div className="min-h-screen bg-[#0f172a] text-white flex flex-col font-sans">
       {/* Mobile Header */}
@@ -375,25 +510,43 @@ export default function Admin() {
           </button>
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-navy-900 font-bold">I</div>
-            <h1 className="text-lg font-bold text-white tracking-tight">Imperial<span className="text-gold-500">Admin</span></h1>
+            <div className="flex flex-col">
+              <h1 className="text-lg font-bold text-white tracking-tight leading-none">Imperial<span className="text-gold-500">Barbearia</span></h1>
+              <span className="text-[8px] text-gold-500/50 font-black uppercase tracking-widest">v1.2 - Agendamentos</span>
+            </div>
           </div>
         </div>
         
         <div className="flex items-center gap-2">
-          <button 
+          {canInstall && !isStandalone && (
+            <motion.button 
+              whileHover={{ scale: 1.05, filter: "brightness(1.1)" }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleInstall}
+              className="bg-gold-500 text-navy-900 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:brightness-110 transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)]"
+            >
+              <Download size={14} />
+              <span className="hidden sm:inline">Instalar App</span>
+            </motion.button>
+          )}
+          <motion.button 
+            whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.08)" }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => navigate('/')}
             className="text-gray-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/5 hover:bg-white/5 transition-all text-xs font-medium flex items-center gap-2"
           >
             <LogOut size={14} className="rotate-180" />
             <span className="hidden sm:inline">Ver Site</span>
-          </button>
-          <button 
+          </motion.button>
+          <motion.button 
+            whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.08)" }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => { logout(); navigate('/'); }}
-            className="text-gray-400 hover:text-white p-2 transition-colors"
+            className="text-gray-400 hover:text-white p-2 transition-colors rounded-lg"
             title="Sair"
           >
             <LogOut size={20} />
-          </button>
+          </motion.button>
         </div>
       </header>
 
@@ -412,14 +565,16 @@ export default function Admin() {
             >
               <nav className="flex-1 p-4 space-y-2 mt-4">
                 {menuItems.map((item) => (
-                  <button
+                  <motion.button
                     key={item.id}
+                    whileHover={{ x: 4 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => { setActiveTab(item.id); setIsMenuOpen(false); }}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium ${activeTab === item.id ? 'bg-gold-500/10 text-gold-500 border border-gold-500/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
                   >
                     <item.icon size={18} />
                     {item.label}
-                  </button>
+                  </motion.button>
                 ))}
               </nav>
               <div className="p-4 border-t border-white/5">
@@ -459,7 +614,7 @@ export default function Admin() {
                   <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <DollarSign size={48} />
                   </div>
-                  <p className="text-gray-400 text-sm font-medium mb-1">Receita Total</p>
+                  <p className="text-gray-400 text-sm font-medium mb-1">Receita ({dashboardMetrics.periodLabel})</p>
                   <h3 className="text-2xl font-bold text-white">R$ {dashboardMetrics.totalRevenue.toFixed(2)}</h3>
                   <div className="mt-4 flex items-center text-xs text-green-400 gap-1">
                     <TrendingUp size={12} />
@@ -471,7 +626,7 @@ export default function Admin() {
                   <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <Users size={48} />
                   </div>
-                  <p className="text-gray-400 text-sm font-medium mb-1">Agendamentos</p>
+                  <p className="text-gray-400 text-sm font-medium mb-1">Agendamentos ({dashboardMetrics.periodLabel})</p>
                   <h3 className="text-2xl font-bold text-white">{dashboardMetrics.totalAppointments}</h3>
                   <div className="mt-4 flex items-center text-xs text-blue-400 gap-1">
                     <UserCheck size={12} />
@@ -483,7 +638,7 @@ export default function Admin() {
                   <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <BarChart2 size={48} />
                   </div>
-                  <p className="text-gray-400 text-sm font-medium mb-1">Ticket Médio</p>
+                  <p className="text-gray-400 text-sm font-medium mb-1">Ticket Médio ({dashboardMetrics.periodLabel})</p>
                   <h3 className="text-2xl font-bold text-white">R$ {dashboardMetrics.averageTicket.toFixed(2)}</h3>
                   <div className="mt-4 flex items-center text-xs text-gray-400 gap-1">
                     <span>Por cliente</span>
@@ -492,12 +647,12 @@ export default function Admin() {
 
                 <div className="bg-gradient-to-br from-gold-500 to-gold-600 p-6 rounded-2xl shadow-xl relative overflow-hidden text-navy-900">
                   <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <DollarSign size={48} />
+                    <UserCheck size={48} />
                   </div>
-                  <p className="text-navy-900/70 text-sm font-bold mb-1">Faturamento Hoje</p>
-                  <h3 className="text-2xl font-bold">R$ {dashboardMetrics.todayRevenue.toFixed(2)}</h3>
+                  <p className="text-navy-900/70 text-sm font-bold mb-1">Atendidos ({dashboardMetrics.periodLabel})</p>
+                  <h3 className="text-2xl font-bold">{dashboardMetrics.periodAttended}</h3>
                   <div className="mt-4 flex items-center text-xs font-bold gap-1 bg-white/20 w-fit px-2 py-1 rounded-full">
-                    <span>{dashboardMetrics.todayCount} atendimentos</span>
+                    <span>{dashboardMetrics.todayCount} hoje</span>
                   </div>
                 </div>
               </div>
@@ -743,13 +898,43 @@ export default function Admin() {
                             {dayAppointments.slice(0, 3).map(app => (
                               <div 
                                 key={app.id}
-                                className="text-[10px] p-1.5 rounded-lg bg-[#0f172a] border border-white/5 hover:border-gold-500/30 transition-all cursor-pointer truncate group/item"
-                                title={`${app.clientName} - ${getServiceName(app.serviceId)}`}
+                                onClick={() => toggleAttended(app.id)}
+                                className={cn(
+                                  "text-[10px] p-1.5 rounded-lg border transition-all cursor-pointer truncate group/item relative",
+                                  app.attended 
+                                    ? "bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20" 
+                                    : "bg-[#0f172a] border-white/5 hover:border-gold-500/30"
+                                )}
+                                title={`${app.clientName} - ${getServiceName(app.serviceId)}${app.attended ? ' (Atendido)' : ''}`}
                               >
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-gold-500"></div>
-                                  <span className="font-bold text-white truncate">{format(new Date(app.date), 'HH:mm')}</span>
-                                  <span className="text-gray-400 truncate">{app.clientName.split(' ')[0]}</span>
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <div className={cn(
+                                      "w-1.5 h-1.5 rounded-full shrink-0",
+                                      app.attended ? "bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]" : "bg-gold-500"
+                                    )}></div>
+                                    <span className={cn(
+                                      "font-bold truncate",
+                                      app.attended ? "text-emerald-400" : "text-white"
+                                    )}>{format(parseISO(app.date), 'HH:mm')}</span>
+                                    <span className={cn(
+                                      "truncate",
+                                      app.attended ? "text-emerald-500/70" : "text-gray-400"
+                                    )}>{app.clientName.split(' ')[0]}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-all">
+                                    {app.attended && <UserCheck size={10} className="text-emerald-500" />}
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCancel(e, app);
+                                      }}
+                                      className="p-1 hover:bg-red-500/20 text-red-400 rounded transition-all shrink-0"
+                                      title="Cancelar Agendamento"
+                                    >
+                                      <Trash2 size={10} />
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             ))}
@@ -765,46 +950,142 @@ export default function Admin() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-[#1e293b]/50 backdrop-blur-sm rounded-2xl border border-white/5 overflow-hidden shadow-xl">
-                  <div className="divide-y divide-white/5">
-                    {filteredAppointmentsList.length > 0 ? (
-                      filteredAppointmentsList.map((app) => (
-                        <div key={app.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-colors group">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-[#0f172a] flex items-center justify-center text-gold-500 font-bold border border-white/10 shadow-inner">
-                              {app.clientName.charAt(0)}
+                <div className="space-y-4">
+                  {/* Date Navigation for List View */}
+                  <div className="bg-[#1e293b] p-5 rounded-2xl border border-gold-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl">
+                    <div className="flex items-center gap-6">
+                      <button 
+                        onClick={() => {
+                          const newDate = new Date(selectedListDate);
+                          newDate.setDate(newDate.getDate() - 1);
+                          setSelectedListDate(newDate);
+                        }}
+                        className="p-3 hover:bg-gold-500/10 rounded-xl text-gold-500 transition-all border border-gold-500/10 hover:border-gold-500/30"
+                      >
+                        <ChevronLeft size={24} />
+                      </button>
+                      <div className="text-center min-w-[180px]">
+                        <h4 className="text-xl font-black text-white capitalize leading-tight">
+                          {isToday(selectedListDate) ? 'Hoje, ' : ''}
+                          {format(selectedListDate, "dd 'de' MMMM", { locale: ptBR })}
+                        </h4>
+                        <p className="text-xs text-gold-500 font-black uppercase tracking-[0.2em] mt-1">
+                          {format(selectedListDate, "EEEE", { locale: ptBR })}
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const newDate = new Date(selectedListDate);
+                          newDate.setDate(newDate.getDate() + 1);
+                          setSelectedListDate(newDate);
+                        }}
+                        className="p-3 hover:bg-gold-500/10 rounded-xl text-gold-500 transition-all border border-gold-500/10 hover:border-gold-500/30"
+                      >
+                        <ChevronRight size={24} />
+                      </button>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                      <div className="relative flex-1 sm:flex-none">
+                        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gold-500" size={16} />
+                        <input 
+                          type="date" 
+                          value={format(selectedListDate, 'yyyy-MM-dd')}
+                          onChange={(e) => {
+                            const [year, month, day] = e.target.value.split('-').map(Number);
+                            setSelectedListDate(new Date(year, month - 1, day));
+                          }}
+                          className="bg-[#0f172a] text-white pl-10 pr-4 py-2.5 rounded-xl border border-white/10 outline-none focus:border-gold-500 text-sm font-bold w-full transition-all"
+                        />
+                      </div>
+                      {!isToday(selectedListDate) && (
+                        <button 
+                          onClick={() => setSelectedListDate(new Date())}
+                          className="px-6 py-2.5 bg-gold-500 text-navy-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-gold-400 transition-all shadow-lg shadow-gold-500/20"
+                        >
+                          Hoje
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-[#1e293b]/50 backdrop-blur-sm rounded-2xl border border-white/5 overflow-hidden shadow-xl">
+                    <div className="divide-y divide-white/5">
+                      {filteredAppointmentsList.length > 0 ? (
+                        filteredAppointmentsList.map((app) => (
+                          <div key={app.id} className={cn(
+                            "p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-colors group relative overflow-hidden",
+                            app.attended && "bg-emerald-500/[0.02]"
+                          )}>
+                            {app.attended && (
+                              <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                            )}
+                            <div className="flex items-center gap-4">
+                              <div className={cn(
+                                "w-12 h-12 rounded-xl flex items-center justify-center font-bold border shadow-inner transition-all",
+                                app.attended 
+                                  ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/30" 
+                                  : "bg-[#0f172a] text-gold-500 border-white/10"
+                              )}>
+                                {app.attended ? <UserCheck size={24} /> : app.clientName.charAt(0)}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className={cn(
+                                    "font-bold text-lg transition-colors",
+                                    app.attended ? "text-emerald-400" : "text-white"
+                                  )}>{app.clientName}</h3>
+                                  {app.attended && (
+                                    <span className="bg-emerald-500/10 text-emerald-500 text-[10px] uppercase font-black px-2 py-0.5 rounded border border-emerald-500/20 tracking-widest">Atendido</span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
+                                  <span className="bg-white/5 px-2 py-0.5 rounded text-xs border border-white/5">{getServiceName(app.serviceId)}</span>
+                                  <span>•</span>
+                                  <span className="text-gold-500">{getBarberName(app.barberId)}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
+                                  <Clock size={12} />
+                                  <span className="font-bold text-gray-300">{format(parseISO(app.date), 'HH:mm')}</span>
+                                  <span className="ml-2 text-gold-500/80 font-medium">{formatCurrency(app.price)}</span>
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <h3 className="font-bold text-white text-lg">{app.clientName}</h3>
-                              <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
-                                <span className="bg-white/5 px-2 py-0.5 rounded text-xs border border-white/5">{getServiceName(app.serviceId)}</span>
-                                <span>•</span>
-                                <span className="text-gold-500">{getBarberName(app.barberId)}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
-                                <CalendarIcon size={12} />
-                                {new Date(app.date).toLocaleDateString()}
-                                <Clock size={12} className="ml-2" />
-                                {new Date(app.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                              </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => toggleAttended(app.id)}
+                                className={cn(
+                                  "flex-1 sm:flex-none p-4 rounded-xl transition-all flex items-center justify-center gap-2 border shadow-lg",
+                                  app.attended 
+                                    ? "bg-emerald-500 text-white border-emerald-400" 
+                                    : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500 hover:text-white"
+                                )}
+                                title={app.attended ? "Marcar como não atendido" : "Marcar como atendido"}
+                              >
+                                <UserCheck size={20} />
+                                <span className="sm:hidden font-bold">{app.attended ? 'Atendido' : 'Marcar Atendido'}</span>
+                              </button>
+                              
+                              <button 
+                                onClick={(e) => handleCancel(e, app)}
+                                className="flex-1 sm:flex-none bg-red-500/10 text-red-400 p-4 rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 group-hover:shadow-lg group-hover:shadow-red-500/20 border border-transparent hover:border-red-400/50 cursor-pointer"
+                                title="Cancelar Agendamento"
+                              >
+                                <Trash2 size={20} />
+                                <span className="sm:hidden font-bold">Cancelar</span>
+                              </button>
                             </div>
                           </div>
-                          <button 
-                            onClick={(e) => handleCancel(e, app)}
-                            className="bg-red-500/10 text-red-400 p-4 rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 sm:w-auto w-full group-hover:shadow-lg group-hover:shadow-red-500/20 border border-transparent hover:border-red-400/50 cursor-pointer z-10"
-                          >
-                            <Trash2 size={20} />
-                            <span className="sm:hidden font-bold">Cancelar Agendamento</span>
-                          </button>
+                        ))
+                      ) : (
+                        <div className="p-12 text-center flex flex-col items-center justify-center text-gray-500">
+                          <CalendarIcon size={48} className="mb-4 opacity-20" />
+                          <p className="text-lg">Nenhum agendamento para este dia.</p>
+                          <p className="text-sm opacity-60">Novos agendamentos aparecerão aqui.</p>
                         </div>
-                      ))
-                    ) : (
-                      <div className="p-12 text-center flex flex-col items-center justify-center text-gray-500">
-                        <CalendarIcon size={48} className="mb-4 opacity-20" />
-                        <p className="text-lg">Nenhum agendamento encontrado.</p>
-                        <p className="text-sm opacity-60">Novos agendamentos aparecerão aqui.</p>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -870,9 +1151,9 @@ export default function Admin() {
                             </div>
                             <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
                               <CalendarIcon size={12} />
-                              {new Date(app.date).toLocaleDateString()}
+                              {format(parseISO(app.date), 'dd/MM/yyyy')}
                               <Clock size={12} className="ml-2" />
-                              {new Date(app.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              {format(parseISO(app.date), 'HH:mm')}
                               <span className="ml-2 text-gold-500/80 font-medium">{formatCurrency(app.price)}</span>
                             </div>
                           </div>
@@ -916,6 +1197,7 @@ export default function Admin() {
                       <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-500">Qtd. Cortes</th>
                       <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-500">Faturamento</th>
                       <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-500">Ticket Médio</th>
+                      <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-500 text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -930,6 +1212,16 @@ export default function Admin() {
                           <td className="p-4 text-gray-300">{stat.totalCuts} cortes</td>
                           <td className="p-4 text-gold-500 font-bold">{formatCurrency(stat.totalRevenue)}</td>
                           <td className="p-4 text-gray-400">{formatCurrency(stat.totalRevenue / stat.totalCuts)}</td>
+                          <td className="p-4 text-right">
+                            <button
+                              onClick={() => handleExportMonthlyReport(stat.month)}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 bg-gold-500/10 text-gold-500 hover:bg-gold-500 hover:text-navy-900 rounded-lg text-xs font-bold transition-all border border-gold-500/20"
+                              title="Exportar Planilha Completa"
+                            >
+                              <Download size={14} />
+                              <span className="hidden sm:inline">Exportar CSV</span>
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}

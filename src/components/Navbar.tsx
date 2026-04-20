@@ -1,13 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Scissors, Calendar, MapPin, User, LogIn, Lock } from 'lucide-react';
+import { Menu, X, Scissors, Calendar, MapPin, User, LogIn, Lock, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [canInstall, setCanInstall] = useState(!!(window as any).deferredPrompt);
   const location = useLocation();
+
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
+  useEffect(() => {
+    const handleInstallReady = () => setCanInstall(true);
+    window.addEventListener('pwa-install-ready', handleInstallReady);
+    return () => window.removeEventListener('pwa-install-ready', handleInstallReady);
+  }, []);
+
+  const handleInstall = async () => {
+    const promptEvent = (window as any).deferredPrompt;
+    if (!promptEvent) return;
+    
+    promptEvent.prompt();
+    const { outcome } = await promptEvent.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    
+    (window as any).deferredPrompt = null;
+    setCanInstall(false);
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -44,7 +65,7 @@ export default function Navbar() {
           <Link to="/" className="flex items-center gap-2 sm:gap-3 group logo-glow-hover">
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
                <div className="absolute inset-0 border border-gold-500/30 rounded-full group-hover:border-gold-500 transition-colors duration-500"></div>
-               <span className="font-serif text-2xl sm:text-3xl text-gold-500 font-bold drop-shadow-lg">I</span>
+               <span translate="no" className="font-serif text-2xl sm:text-3xl text-gold-500 font-bold drop-shadow-lg notranslate">I</span>
                <div className="absolute -top-1.5 sm:-top-2 text-gold-500 w-3 h-3 sm:w-4 sm:h-4 animate-pulse">
                  <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                    <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" />
@@ -70,21 +91,49 @@ export default function Navbar() {
                   key={link.name}
                   to={link.path}
                   className={cn(
-                    "px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300 hover:text-gold-400",
+                    "px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300 hover:text-gold-400 relative group",
                     location.pathname === link.path ? "text-gold-500" : "text-gray-300"
                   )}
                 >
                   {link.name}
+                  <motion.div 
+                    className={cn(
+                      "absolute bottom-0 left-0 h-0.5 bg-gold-500 transition-all duration-300",
+                      location.pathname === link.path ? "w-full" : "w-0 group-hover:w-full"
+                    )}
+                    layoutId="navUnderline"
+                  />
                 </Link>
               ))}
+              {canInstall && !isStandalone && (
+                <motion.button 
+                  whileHover={{ scale: 1.05, filter: "brightness(1.1)" }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleInstall}
+                  className="bg-gold-500 text-navy-900 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:brightness-110 transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)]"
+                >
+                  <Download size={14} />
+                  <span>Instalar</span>
+                </motion.button>
+              )}
               <Link to="/admin" className="text-gray-500 hover:text-gold-500 transition-colors">
                 <LogIn size={18} />
               </Link>
             </div>
           </div>
 
-          {/* Mobile menu button */}
           <div className="md:hidden flex items-center gap-1">
+            {canInstall && !isStandalone && (
+              <motion.button 
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleInstall}
+                className="bg-gold-500 text-navy-900 p-2 rounded-lg mr-1 shadow-lg"
+                title="Instalar App"
+              >
+                <Download size={18} />
+              </motion.button>
+            )}
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="text-gold-500 hover:text-white transition-colors p-2"

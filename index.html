@@ -9,6 +9,34 @@
     <meta property="og:title" content="Imperial Barbearia | Cortes de Elite" />
     <meta property="og:description" content="Agende seu horário na melhor barbearia da região." />
     <meta property="og:type" content="website" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#BFA56D" />
+    
+    <!-- iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Imperial">
+    <link rel="apple-touch-icon" href="/favicon.svg">
+    
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js');
+        });
+      }
+      
+      // Global variable to store the install prompt event
+      window.deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent the default browser prompt
+        e.preventDefault();
+        // Stash the event so it can be triggered later
+        window.deferredPrompt = e;
+        // Dispatch a custom event to notify the Admin component
+        window.dispatchEvent(new CustomEvent('pwa-install-ready'));
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
