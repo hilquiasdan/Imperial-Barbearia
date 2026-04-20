@@ -90,18 +90,24 @@ const seedDb = async (db) => {
       await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '0', 'admin', bcrypt.hashSync('Matheus#Admin@2024', 10), 'Administrador', 'owner', null);
     }
 
-    // Add Leomar (Owner/Admin)
+    // Add or Update Leomar (Owner/Admin)
     const leomarUser = users.find(u => u.username === 'leomar');
     if (!leomarUser) {
       console.log("Inserindo usuário Leomar (Admin)...");
-      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('Leomar@Matheus2024', 10), 'Leomar', 'owner', '1');
+      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '1', 'leomar', bcrypt.hashSync('2410', 10), 'Leomar', 'owner', '1');
+    } else {
+      // Force update password to 2410 for Hostinger sync
+      await db.run('UPDATE users SET password = ? WHERE username = ?', bcrypt.hashSync('2410', 10), 'leomar');
     }
 
-    // Add Pedro (Barber)
+    // Add or Update Pedro (Barber)
     const pedroUser = users.find(u => u.username === 'pedro');
     if (!pedroUser) {
       console.log("Inserindo usuário Pedro (Barbeiro)...");
-      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('Pedro@Matheus2024', 10), 'Pedro', 'barber', '2');
+      await db.run('INSERT INTO users (id, username, password, name, role, barberId) VALUES (?, ?, ?, ?, ?, ?)', '2', 'pedro', bcrypt.hashSync('2410', 10), 'Pedro', 'barber', '2');
+    } else {
+      // Force update password to 2410 for Hostinger sync
+      await db.run('UPDATE users SET password = ? WHERE username = ?', bcrypt.hashSync('2410', 10), 'pedro');
     }
 
     // Migration: Ensure all passwords are hashed
